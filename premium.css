@@ -63,3 +63,13 @@ body{background:radial-gradient(ellipse at 82% -12%,#66502a38,transparent 38%),r
 .exam-countdown{position:sticky;top:90px;z-index:3;margin:16px 0;padding:14px 18px;border:1px solid #d8bd8266;border-radius:13px;background:#242119;color:#f0dfb8;font:800 17px "Plus Jakarta Sans";text-align:center;box-shadow:0 8px 24px #0005}.exam-countdown:has(+form){letter-spacing:.4px}#studentApp .exam-card{padding:clamp(18px,3vw,30px)}#studentApp .exam-card h2{margin-top:12px;color:#f0dfb8}
 
 .learning-progress{display:grid;grid-template-columns:minmax(150px,220px) 1fr;align-items:center;gap:24px;margin:10px 0 28px}.learning-progress h3{font:800 27px "Plus Jakarta Sans";color:var(--gold-soft);margin:9px 0 3px}.learning-progress p{color:var(--muted);font-size:12px;margin:0}.progress-track{height:12px;border-radius:20px;background:#ffffff12;overflow:hidden}.progress-track span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#a98b58,#f0dfb8);transition:width .35s}@media(max-width:600px){.learning-progress{grid-template-columns:1fr;gap:15px}}
+
+/* Reliable section navigation on desktop and mobile */
+html{scroll-behavior:smooth;scroll-padding-top:112px}
+#features,#tests,#about{scroll-margin-top:112px}
+.top{height:auto;min-height:82px;flex-wrap:wrap;gap:10px;padding-block:12px}
+.nav{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.nav a{display:inline-flex!important;align-items:center;justify-content:center;padding:9px 13px;border:1px solid #d8bd8230;border-radius:11px;color:#e9dfcb;background:#ffffff06;font-size:12px;white-space:nowrap;cursor:pointer;transition:.2s}
+.nav a:hover,.nav a:focus-visible{color:#f4dfb3;background:#d8bd8218;border-color:#d8bd82;outline:none}
+@media(max-width:800px){.top{align-items:center;padding-inline:16px}.nav{width:100%;justify-content:center;gap:7px;padding:2px 0 8px}.nav a{display:inline-flex!important;flex:1 1 auto;min-width:0;padding:10px 8px;font-size:11px}.nav .btn{flex:0 0 auto}}
+@media(max-width:420px){.nav a{font-size:10px;padding:9px 5px}.nav{gap:5px}}
