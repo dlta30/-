@@ -125,15 +125,16 @@ function showGooglePasswordSetup(){
   const layer=document.createElement("div");
   layer.className="modal show";
   layer.id="googlePasswordSetup";
-  layer.innerHTML='<div class="dialog"><div class="eyebrow">إكمال إنشاء الحساب</div><h2 style="margin-top:16px">أنشئ كلمة مرور لحسابك</h2><p>تم تسجيل بريدك باستخدام Google. اختر كلمة مرور لتتمكن من الدخول لاحقاً بالبريد وكلمة المرور دون الحاجة إلى Google.</p><form id="googlePasswordForm"><div class="field"><label>كلمة المرور الجديدة</label><input id="googleNewPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="8 أحرف على الأقل"></div><div class="field"><label>تأكيد كلمة المرور</label><input id="googleConfirmPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="أعد كتابة كلمة المرور"></div><button class="btn primary" type="submit">حفظ كلمة المرور والدخول</button></form><div class="notice">استخدم كلمة مرور لا تشاركها مع أي شخص.</div></div>';
+  layer.innerHTML='<div class="dialog"><div class="eyebrow">إكمال إنشاء الحساب</div><h2 style="margin-top:16px">جهّز حسابك التعليمي</h2><p>اختر اسماً يظهر للطلاب والمعلم، ثم أنشئ كلمة مرور لتدخل لاحقاً بالبريد وكلمة المرور دون الحاجة إلى Google.</p><form id="googlePasswordForm"><div class="field"><label for="googleAccountName">اسم الحساب (Nickname)</label><input id="googleAccountName" type="text" minlength="2" maxlength="40" required autocomplete="nickname" value="'+esc(currentUser?.name||"")+'" placeholder="اكتب الاسم الذي تريد ظهوره"></div><div class="field"><label for="googleNewPassword">كلمة المرور الجديدة</label><input id="googleNewPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="8 أحرف على الأقل"></div><div class="field"><label for="googleConfirmPassword">تأكيد كلمة المرور</label><input id="googleConfirmPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="أعد كتابة كلمة المرور"></div><button class="btn primary" type="submit">حفظ الاسم وكلمة المرور</button></form><div class="notice">اسم الحساب سيظهر في المنصة. لا تشارك كلمة مرورك مع أي شخص.</div></div>';
   document.body.append(layer);
   $("#googlePasswordForm").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const password=$("#googleNewPassword").value,confirmation=$("#googleConfirmPassword").value;
+    const name=$("#googleAccountName").value.trim(),password=$("#googleNewPassword").value,confirmation=$("#googleConfirmPassword").value;
+    if(name.length<2||name.length>40){toast("اكتب اسماً من حرفين إلى 40 حرفاً");return;}
     if(password!==confirmation){toast("كلمتا المرور غير متطابقتين");return;}
     const button=ev.currentTarget.querySelector("button[type=submit]");button.disabled=true;button.textContent="جارٍ الحفظ...";
-    try{await api("/api/auth/set-password",{method:"POST",body:JSON.stringify({password,confirmation})});layer.remove();const url=new URL(location.href);url.searchParams.delete("google_setup");history.replaceState({},"",url.pathname+url.search+url.hash);toast("تم حفظ كلمة المرور، تقدر تدخل بها لاحقاً");}
-    catch(e){toast(e.message);button.disabled=false;button.textContent="حفظ كلمة المرور والدخول";}
+    try{const saved=await api("/api/auth/set-password",{method:"POST",body:JSON.stringify({name,password,confirmation})});if(saved.user)currentUser=saved.user;updateHeaderForUser();$("#welcomeTitle").textContent="مرحباً، "+currentUser.name;layer.remove();const url=new URL(location.href);url.searchParams.delete("google_setup");history.replaceState({},"",url.pathname+url.search+url.hash);toast("تم حفظ اسم الحساب وكلمة المرور");}
+    catch(e){toast(e.message);button.disabled=false;button.textContent="حفظ الاسم وكلمة المرور";}
   });
 }
 
