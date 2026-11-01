@@ -1,5 +1,12 @@
 import { newId } from "../../../_lib/http.js";
-import { hashPassword, createSession } from "../../../_lib/auth.js";
+import { createSession } from "../../../_lib/auth.js";
+
+function randomBase64(size) {
+  const bytes = crypto.getRandomValues(new Uint8Array(size));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
 
 function cookie(request, name) {
   const item = (request.headers.get("Cookie") || "").split(";").map(x => x.trim()).find(x => x.startsWith(name + "="));
@@ -54,8 +61,11 @@ async function handleGoogleCallback({ request, env }, markStage) {
     const id = newId();
     const name = String(info.name || info.given_name || email.split("@")[0]).trim().slice(0, 80) || "طالب";
     const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(48)), b => b.toString(16).padStart(2, "0")).join("");
+    // Google-only account: store an unguessable, valid-format password pair.
+    // No password is known or accepted for this account; authentication is via Google.
     markStage("password_hash");
-    const { salt, hash } = await hashPassword(randomPassword);
+    const salt = randomBase64(16);
+    const hash = randomBase64(32);
     markStage("user_insert");
     try {
       await env.DB.prepare("INSERT INTO users (id,name,email,password_hash,password_salt,role) VALUES (?,?,?,?,?,'student')")
