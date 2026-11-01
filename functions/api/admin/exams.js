@@ -31,8 +31,8 @@ export async function onRequestPost(context) {
       return json({error:"تحقق من نص كل سؤال وخياراته والإجابة الصحيحة"},400);
   }
   const id=newId();
-  await context.env.DB.prepare("INSERT INTO exams (id,title,description,duration_minutes,opens_at,closes_at,status,created_by) VALUES (?,?,?,?,?,?,?,?)")
-    .bind(id,title,description,duration,opensAt,closesAt,body.publish===true?"published":"draft",auth.user.id).run();
+  await context.env.DB.prepare("INSERT INTO exams (id,title,description,duration_minutes,opens_at,closes_at,status,created_by,semester) VALUES (?,?,?,?,?,?,?,?,?)")
+    .bind(id,title,description,duration,opensAt,closesAt,body.publish===true?"published":"draft",auth.user.id,body.semester==="2"?"2":"1").run();
   const stmt=context.env.DB.prepare("INSERT INTO questions (id,exam_id,prompt,options_json,correct_index,points,sort_order) VALUES (?,?,?,?,?,?,?)");
   await context.env.DB.batch(questions.map((q,i)=>stmt.bind(newId(),id,q.prompt.trim(),JSON.stringify(q.options),q.correctIndex,Number(q.points)||1,i)));
   return json({ok:true,id,message:body.publish===true?"تم إنشاء الاختبار ونشره":"تم حفظ الاختبار كمسودة"},201);
