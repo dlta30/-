@@ -18,11 +18,20 @@ export async function hashPassword(password, salt = crypto.getRandomValues(new U
   return { salt: toBase64(salt), hash: toBase64(bits) };
 }
 export async function verifyPassword(password, saltText, hashText) {
-  const result = await hashPassword(password, fromBase64(saltText));
-  const a = enc.encode(result.hash), b = enc.encode(hashText);
-  if (a.length !== b.length) return false;
-  let diff = 0; for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
+  try {
+    if (typeof password !== "string" || typeof saltText !== "string" || typeof hashText !== "string") return false;
+    const salt = fromBase64(saltText);
+    const expected = fromBase64(hashText);
+    if (salt.length < 16 || expected.length !== 32) return false;
+    const result = await hashPassword(password, salt);
+    const actual = fromBase64(result.hash);
+    if (actual.length !== expected.length) return false;
+    let diff = 0;
+    for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expected[i];
+    return diff === 0;
+  } catch {
+    return false;
+  }
 }
 async function digest(value) {
   return toBase64(await crypto.subtle.digest("SHA-256", enc.encode(value)));
