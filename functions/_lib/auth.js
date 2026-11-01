@@ -50,7 +50,7 @@ export async function currentUser(db, request) {
   if (!token) return null;
   return await db.prepare(`SELECT u.id,u.name,u.email,u.role,u.active
     FROM sessions s JOIN users u ON u.id=s.user_id
-    WHERE s.token_hash=? AND s.expires_at > datetime('now') AND u.active=1`)
+    WHERE s.token_hash=? AND s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now') AND u.active=1`)
     .bind(await digest(token)).first();
 }
 export async function requireUser(context) {
