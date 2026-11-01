@@ -54,14 +54,20 @@ async function handleGoogleCallback({ request, env }, markStage) {
     const id = newId();
     const name = String(info.name || info.given_name || email.split("@")[0]).trim().slice(0, 80) || "طالب";
     const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(48)), b => b.toString(16).padStart(2, "0")).join("");
+    markStage("password_hash");
     const { salt, hash } = await hashPassword(randomPassword);
+    markStage("user_insert");
     try {
       await env.DB.prepare("INSERT INTO users (id,name,email,password_hash,password_salt,role) VALUES (?,?,?,?,?,'student')")
         .bind(id, name, email, hash, salt).run();
       user = { id, name, email, role: "student", active: 1 };
-    } catch {
+    } catch (insertError) {
+      markStage("user_insert_recovery");
       user = await env.DB.prepare("SELECT id,name,email,role,active FROM users WHERE email=?").bind(email).first();
-      if (!user || !user.active) return fail(request, "account");
+      if (!user || !user.active) {
+        console.error("Google student insert failed:", insertError?.message || insertError);
+        return fail(request, "account");
+      }
     }
   }
 
