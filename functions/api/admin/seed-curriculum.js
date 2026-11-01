@@ -76,7 +76,7 @@ export async function onRequestPost(context) {
           "• تدرب على أسئلة متنوعة وراجع سبب صحة كل إجابة.",
           "",
           "ملاحظة تعليمية: هذا شرح دراسي منظم للمراجعة وبناء الفهم، ويُستخدم مع كتاب الطالب وشرح المعلم؛ ولا يُعد بديلاً عن النص الرسمي للكتاب أو تعليمات المعلم."
-        ].join("\\n");
+        ].join("\n");
         statements.push(db.prepare("INSERT INTO lessons (id,unit_id,title,summary,content,sort_order,published,created_by) VALUES (?,?,?,?,?,?,?,?)")
           .bind(lessonId,unitId,lesson,summary,body,j+1,1,auth.user.id));
         lessonCount++;
