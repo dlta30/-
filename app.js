@@ -98,4 +98,21 @@ async function boot(){
 document.addEventListener("DOMContentLoaded",()=>{
   $("#auth").addEventListener("click",e=>{if(e.target.id==="auth")closeAuth();});
   boot();
+  const googleButton = document.createElement("button");
+  googleButton.type = "button";
+  googleButton.className = "btn ghost";
+  googleButton.id = "googleSignIn";
+  googleButton.style.width = "100%";
+  googleButton.style.marginTop = "10px";
+  googleButton.textContent = "المتابعة باستخدام Google";
+  googleButton.addEventListener("click", () => { window.location.href = "/api/auth/google"; });
+  $("#authForm").append(googleButton);
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("google_error")) {
+    const messages = { config: "تسجيل Google غير مكتمل الإعداد", state: "انتهت صلاحية محاولة تسجيل الدخول، حاول مجدداً", token: "تعذر التحقق من حساب Google", identity: "تعذر التحقق من هوية حساب Google", disabled: "هذا الحساب موقوف، تواصل مع إدارة المنصة", account: "تعذر إنشاء الحساب" };
+    toast(messages[params.get("google_error")] || "تعذر تسجيل الدخول باستخدام Google");
+    params.delete("google_error");
+    const cleanUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
+    history.replaceState({}, "", cleanUrl);
+  }
 });
