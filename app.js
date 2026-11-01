@@ -1,5 +1,6 @@
 const $ = (s) => document.querySelector(s);
 let currentUser = null;
+let authMode = 'login';
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials: "same-origin", ...options,
     headers: { "content-type": "application/json", ...(options.headers || {}) } });
@@ -33,7 +34,7 @@ async function submitAuth(event){
 }
 async function logout(){
   try{await api("/api/auth/logout",{method:"POST",body:"{}"});}catch{}
-  currentUser=null; $("#studentApp").hidden=true; document.querySelector("main").hidden=false; toast("تم تسجيل الخروج");
+  currentUser=null; $("#studentApp").hidden=true; document.querySelector("main").hidden=false; document.querySelector("main").querySelectorAll(":scope > section:not(#studentApp)").forEach(x=>x.hidden=false); toast("تم تسجيل الخروج");
 }
 function ensureApp(){
   if($("#studentApp")) return;
@@ -62,10 +63,11 @@ async function renderStudent(){
   }).join("");
   list.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openExam(b.dataset.open)));
 }
+function viewResult(e){ $("#appContent").innerHTML = '<div class="card result-card"><h2>نتيجة اختبار: '+esc(e.title)+'</h2><div class="result-number">'+e.score+' / '+e.totalPoints+'</div><button class="btn primary" id="backToStudent">العودة إلى الاختبارات</button></div>'; $("#backToStudent").addEventListener("click",renderStudent); }
 async function openExam(id){
   try{
     const data=await api("/api/exams/"+encodeURIComponent(id));
-    if(data.alreadyAttempted){toast("سبق أن أكملت هذا الاختبار");return;}
+    if(data.alreadyAttempted){const board=await api("/api/dashboard");const result=board.exams.find(x=>x.id===id);if(result)viewResult(result);else toast("سبق أن أكملت هذا الاختبار");return;}
     const exam=data.exam;
     $("#appContent").innerHTML='<button class="btn ghost" id="backDashboard">← العودة</button><div class="card exam-card"><div class="eyebrow">اختبار كيمياء</div><h2>'+esc(exam.title)+'</h2><p>'+esc(exam.description||"")+' · المدة '+exam.duration_minutes+' دقيقة</p><form id="examForm">'+data.questions.map((q,i)=>'<div class="question"><h3>'+(i+1)+'. '+esc(q.prompt)+' <small>('+q.points+' درجة)</small></h3>'+q.options.map((o,j)=>'<label class="answer-option"><input type="radio" name="'+esc(q.id)+'" value="'+j+'" required> '+esc(o)+'</label>').join("")+'</div>').join("")+'<button class="btn primary" type="submit">تسليم الاختبار</button></form></div>';
     $("#backDashboard").addEventListener("click",renderStudent);
@@ -86,7 +88,7 @@ async function renderAdmin(){
   $("#createExamForm").addEventListener("submit",async ev=>{
     ev.preventDefault();const form=ev.currentTarget;const fd=new FormData(form);let questions;
     try{questions=JSON.parse(fd.get("questions"));if(!Array.isArray(questions))throw 0;}catch{toast("صيغة الأسئلة JSON غير صحيحة");return;}
-    try{await api("/api/admin/exams",{method:"POST",body:JSON.stringify({title:fd.get("title"),description:fd.get("description"),durationMinutes:Number(fd.get("duration")),opensAt:fd.get("opens")||null,closesAt:fd.get("closes")||null,questions,publish:ev.submitter?.value==="true"})});toast("تم حفظ الاختبار");await renderAdmin();}catch(e){toast(e.message);}
+    try{await api("/api/admin/exams",{method:"POST",body:JSON.stringify({title:fd.get("title"),description:fd.get("description"),durationMinutes:Number(fd.get("duration")),opensAt:fd.get("opens")?new Date(fd.get("opens")).toISOString():null,closesAt:fd.get("closes")?new Date(fd.get("closes")).toISOString():null,questions,publish:ev.submitter?.value==="true"})});toast("تم حفظ الاختبار");await renderAdmin();}catch(e){toast(e.message);}
   });
 }
 async function boot(){
