@@ -17,14 +17,17 @@ export async function onRequestPost(context) {
   const description=String(body?.description||"").trim();
   const duration=Number(body?.durationMinutes||30);
   const questions=Array.isArray(body?.questions)?body.questions:[];
-  const opensAt=body?.opensAt?new Date(body.opensAt).toISOString():null;
-  const closesAt=body?.closesAt?new Date(body.closesAt).toISOString():null;
+  const openDate=body?.opensAt?new Date(body.opensAt):null;
+  const closeDate=body?.closesAt?new Date(body.closesAt):null;
+  if((openDate&&!Number.isFinite(openDate.getTime()))||(closeDate&&!Number.isFinite(closeDate.getTime())))return json({error:"صيغة تاريخ فتح أو إغلاق الاختبار غير صحيحة"},400);
+  const opensAt=openDate?openDate.toISOString():null;
+  const closesAt=closeDate?closeDate.toISOString():null;
   if(title.length<3||title.length>160)return json({error:"عنوان الاختبار مطلوب (3 إلى 160 حرفاً)"},400);
   if(!Number.isInteger(duration)||duration<1||duration>300)return json({error:"مدة الاختبار يجب أن تكون بين دقيقة و300 دقيقة"},400);
   if(questions.length<1||questions.length>100)return json({error:"أضف سؤالاً واحداً على الأقل (حتى 100 سؤال)"},400);
   if(opensAt&&closesAt&&Date.parse(closesAt)<=Date.parse(opensAt))return json({error:"وقت الإغلاق يجب أن يكون بعد وقت الفتح"},400);
   for(const q of questions){
-    if(typeof q.prompt!=="string"||q.prompt.trim().length<2||!Array.isArray(q.options)||q.options.length<2||q.options.length>6||!Number.isInteger(q.correctIndex)||q.correctIndex<0||q.correctIndex>=q.options.length)
+    if(typeof q.prompt!=="string"||q.prompt.trim().length<2||!Array.isArray(q.options)||q.options.length<2||q.options.length>6||q.options.some(o=>typeof o!=="string"||!o.trim())||!Number.isInteger(q.correctIndex)||q.correctIndex<0||q.correctIndex>=q.options.length)
       return json({error:"تحقق من نص كل سؤال وخياراته والإجابة الصحيحة"},400);
   }
   const id=newId();
