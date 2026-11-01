@@ -76,6 +76,7 @@ async function renderStudent(){
   }).join("");
   list.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openExam(b.dataset.open)));
   await renderLearningStudent();
+  renderStudentLabs();
 }
 function viewResult(e){ $("#appContent").innerHTML = '<div class="card result-card"><h2>نتيجة اختبار: '+esc(e.title)+'</h2><div class="result-number">'+e.score+' / '+e.totalPoints+'</div><button class="btn primary" id="backToStudent">العودة إلى الاختبارات</button></div>'; $("#backToStudent").addEventListener("click",renderStudent); }
 async function openExam(id){
@@ -216,3 +217,94 @@ async function renderLearningAdmin(){
  try{await api("/api/learning",{method:"POST",body:JSON.stringify(body)});toast(body.publish?"تم النشر للطلاب":"تم حفظ المسودة");await renderAdmin();}catch(e){toast(e.message);}
  };
 }
+
+function renderStudentLabs(){
+  const root=$("#appContent");
+  root.insertAdjacentHTML("beforeend",\`
+    <section class="learning-lab">
+      <div class="section-head"><div><span class="pill">مختبر تفاعلي</span><h2 class="app-heading">لعبة تكوين المركبات الأيونية</h2><p>اختر أيوناً موجباً وأيوناً سالباً، ثم وازن الشحنات لتكوين مركب متعادل.</p></div></div>
+      <div class="cards">
+        <article class="card ion-game">
+          <h3>1. اختر الأيون الموجب</h3>
+          <div class="ion-options" id="cationOptions">
+            <button type="button" class="ion-choice selected" data-ion="Na" data-charge="1">Na⁺ <small>الصوديوم</small></button>
+            <button type="button" class="ion-choice" data-ion="Mg" data-charge="2">Mg²⁺ <small>المغنيسيوم</small></button>
+            <button type="button" class="ion-choice" data-ion="Al" data-charge="3">Al³⁺ <small>الألومنيوم</small></button>
+            <button type="button" class="ion-choice" data-ion="Ca" data-charge="2">Ca²⁺ <small>الكالسيوم</small></button>
+          </div>
+          <h3 style="margin-top:22px">2. اختر الأيون السالب</h3>
+          <div class="ion-options" id="anionOptions">
+            <button type="button" class="ion-choice selected" data-ion="Cl" data-charge="1">Cl⁻ <small>الكلوريد</small></button>
+            <button type="button" class="ion-choice" data-ion="O" data-charge="2">O²⁻ <small>الأكسيد</small></button>
+            <button type="button" class="ion-choice" data-ion="S" data-charge="2">S²⁻ <small>الكبريتيد</small></button>
+            <button type="button" class="ion-choice" data-ion="N" data-charge="3">N³⁻ <small>النتريد</small></button>
+          </div>
+          <button type="button" class="btn primary" id="balanceIons" style="margin-top:20px">وازن الشحنات واكتشف الصيغة</button>
+          <div class="ion-answer" id="ionAnswer" aria-live="polite">اختر الأيونات ثم اضغط «وازن الشحنات».</div>
+        </article>
+        <article class="card">
+          <div class="card-icon">⚖️</div><h3>كيف نكوّن مركباً متعادلاً؟</h3>
+          <p>يجب أن يساوي مجموع الشحنات الموجبة مجموع الشحنات السالبة. نستخدم أصغر نسبة صحيحة من الأيونات حتى تصبح الشحنة الكلية صفراً.</p>
+          <div class="ion-example"><b>مثال: Mg²⁺ مع Cl⁻</b><p>نحتاج أيون مغنيسيوم واحداً وأيوني كلوريد.</p><strong>MgCl₂</strong><small>+2 − 2 = 0</small></div>
+          <p class="notice">نكتب الأيون الموجب أولاً، ولا نكتب الرقم 1 في الصيغة الكيميائية.</p>
+        </article>
+      </div>
+    </section>
+    <section class="practice-zone">
+      <div class="section-head"><div><span class="pill">تدريب فوري</span><h2 class="app-heading">اختبر فهمك في الأيونات</h2><p>خمسة أسئلة قصيرة مع تصحيح فوري وشرح للإجابة.</p></div></div>
+      <article class="card">
+        <div class="practice-progress"><span id="practiceStep">السؤال 1 من 5</span><span id="practiceScore">النتيجة: 0</span></div>
+        <div class="progress-track"><span id="practiceBar" style="width:20%"></span></div>
+        <div id="practiceQuestion" class="practice-question"></div>
+        <div id="practiceFeedback" class="practice-feedback" aria-live="polite"></div>
+        <div class="practice-actions"><button type="button" class="btn primary" id="practiceNext" disabled>السؤال التالي</button><button type="button" class="btn ghost" id="practiceRestart">إعادة التدريب</button></div>
+      </article>
+    </section>
+  \`);
+  const cations=[...$("#cationOptions").querySelectorAll("[data-ion]")],anions=[...$("#anionOptions").querySelectorAll("[data-ion]")];
+  let cation=cations[0],anion=anions[0];
+  function selectIon(group,button){group.forEach(x=>x.classList.toggle("selected",x===button));}
+  cations.forEach(b=>b.onclick=()=>{cation=b;selectIon(cations,b);});
+  anions.forEach(b=>b.onclick=()=>{anion=b;selectIon(anions,b);});
+  $("#balanceIons").onclick=()=>{
+    const a=Number(cation.dataset.charge),b=Number(anion.dataset.charge),g=(x,y)=>y?g(y,x%y):x;
+    const ca=b/g(a,b),an=a/g(a,b),sub=n=>n===1?"":String(n).replace(/[0-9]/g,d=>"₀₁₂₃₄₅₆₇₈₉"[Number(d)]);
+    const formula=cation.dataset.ion+sub(ca)+anion.dataset.ion+sub(an);
+    $("#ionAnswer").innerHTML='<b>'+formula+'</b><span>عدد الأيونات: '+ca+' موجب و'+an+' سالب</span><small>الشحنة الكلية = ('+ca+' × +'+a+') + ('+an+' × −'+b+') = 0</small>';
+  };
+  const questions=[
+    {q:"ما الشحنة المعتادة لأيون الصوديوم؟",o:["−1","+1","+2"],a:1,e:"يفقد الصوديوم إلكتروناً واحداً، فيصبح Na⁺."},
+    {q:"ما صيغة المركب الناتج من Mg²⁺ وCl⁻؟",o:["MgCl","MgCl₂","Mg₂Cl"],a:1,e:"نحتاج أيوني كلوريد لمعادلة شحنة مغنيسيوم واحدة."},
+    {q:"لماذا يكون المركب الأيوني متعادلاً؟",o:["لأن عدد الذرات متساوٍ دائماً","لأن مجموع الشحنات يساوي صفراً","لأنه لا يحتوي على إلكترونات"],a:1,e:"مجموع الشحنات الموجبة والسالبة في وحدة الصيغة يساوي صفراً."},
+    {q:"ما اسم الأيون السالب Cl⁻؟",o:["كلوريد","كلورات","كلور"],a:0,e:"Cl⁻ يسمى أيون الكلوريد."},
+    {q:"ما الصيغة الصحيحة لمركب الألومنيوم والأكسيد؟",o:["AlO","Al₂O₃","Al₃O₂"],a:1,e:"تتعادل شحنتا 2Al³⁺ مع 3O²⁻، فتكون الصيغة Al₂O₃."}
+  ];
+  let index=0,score=0,answered=false;
+  const draw=()=>{
+    const q=questions[index];answered=false;
+    $("#practiceStep").textContent="السؤال "+(index+1)+" من "+questions.length;
+    $("#practiceScore").textContent="النتيجة: "+score;
+    $("#practiceBar").style.width=((index+1)/questions.length*100)+"%";
+    $("#practiceFeedback").textContent="";$("#practiceNext").disabled=true;
+    $("#practiceNext").textContent=index===questions.length-1?"عرض النتيجة":"السؤال التالي";
+    $("#practiceQuestion").innerHTML='<h3>'+q.q+'</h3><div class="practice-options">'+q.o.map((o,i)=>'<button type="button" class="practice-option" data-answer="'+i+'">'+o+'</button>').join("")+'</div>';
+    $("#practiceQuestion").querySelectorAll("[data-answer]").forEach(btn=>btn.onclick=()=>{
+      if(answered)return;answered=true;const correct=Number(btn.dataset.answer)===q.a;if(correct)score++;
+      $("#practiceQuestion").querySelectorAll("[data-answer]").forEach((b,i)=>{b.disabled=true;if(i===q.a)b.classList.add("correct");else if(i===Number(btn.dataset.answer))b.classList.add("wrong");});
+      $("#practiceScore").textContent="النتيجة: "+score;
+      $("#practiceFeedback").textContent=(correct?"إجابة صحيحة! ":"ليست صحيحة. ")+q.e;
+      $("#practiceNext").disabled=false;
+    });
+  };
+  $("#practiceNext").onclick=()=>{
+    if(!answered)return;
+    if(index===questions.length-1){
+      $("#practiceQuestion").innerHTML='<div class="practice-final"><strong>'+score+' / '+questions.length+'</strong><h3>'+(score>=4?"ممتاز! فهمك للأيونات قوي.":score>=3?"أحسنت، راجع الإجابات وحاول مجدداً.":"لا بأس، راجع المثال ثم أعد التدريب.")+'</h3></div>';
+      $("#practiceFeedback").textContent="انتهى التدريب. اضغط إعادة التدريب للمحاولة مرة أخرى.";
+      $("#practiceNext").disabled=true;$("#practiceNext").textContent="اكتمل التدريب";
+    }else{index++;draw();}
+  };
+  $("#practiceRestart").onclick=()=>{index=0;score=0;draw();};
+  draw();
+}
+
