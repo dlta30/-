@@ -32,19 +32,27 @@ async function submitAuth(event){
     currentUser=data.user; closeAuth(); await showApp();
   } catch(e){ toast(e.message); }
 }
+function updateHeaderForUser(){
+  const nav=$(".nav"); if(!nav)return;
+  let login=$("#headerLogin"), profile=$("#headerProfile"), out=$("#headerLogout");
+  if(!login){login=document.createElement("button");login.id="headerLogin";login.className="btn primary";login.textContent="دخول الطالب";login.onclick=()=>openAuth("login");nav.append(login);}
+  if(!profile){profile=document.createElement("span");profile.id="headerProfile";profile.className="pill";nav.append(profile);}
+  if(!out){out=document.createElement("button");out.id="headerLogout";out.className="btn ghost";out.textContent="تسجيل الخروج";out.onclick=logout;nav.append(out);}
+  login.hidden=!!currentUser;profile.hidden=!currentUser;out.hidden=!currentUser;
+  if(currentUser)profile.textContent=(currentUser.role==="admin"?"المعلم · ":"الطالب · ")+currentUser.name;
+}
 async function logout(){
   try{await api("/api/auth/logout",{method:"POST",body:"{}"});}catch{}
-  currentUser=null; $("#studentApp").hidden=true; document.querySelector("main").hidden=false; document.querySelector("main").querySelectorAll(":scope > section:not(#studentApp)").forEach(x=>x.hidden=false); toast("تم تسجيل الخروج");
+  currentUser=null;updateHeaderForUser();$("#studentApp").hidden=true;document.querySelector("main").hidden=false;document.querySelector("main").querySelectorAll(":scope > section:not(#studentApp)").forEach(x=>x.hidden=false);toast("تم تسجيل الخروج");
 }
 function ensureApp(){
   if($("#studentApp")) return;
   const node=document.createElement("section"); node.id="studentApp"; node.className="wrap section"; node.hidden=true;
-  node.innerHTML='<div class="section-head"><div><div class="eyebrow"><i class="dot"></i> مساحة الحساب</div><h2 id="welcomeTitle" style="margin-top:14px">مرحباً</h2><p id="welcomeSub">هذه مساحتك التعليمية الخاصة</p></div><button class="btn ghost" id="logoutBtn">تسجيل الخروج</button></div><div id="appContent"></div>';
+  node.innerHTML='<div class="section-head"><div><div class="eyebrow"><i class="dot"></i> مساحة الحساب</div><h2 id="welcomeTitle" style="margin-top:14px">مرحباً</h2><p id="welcomeSub">هذه مساحتك التعليمية الخاصة</p></div><span class="pill">منصة الكيمياء</span></div><div id="appContent"></div>';
   document.querySelector("main").append(node);
-  $("#logoutBtn").addEventListener("click",logout);
 }
 async function showApp(){
-  ensureApp(); document.querySelector("main").querySelectorAll(":scope > section:not(#studentApp)").forEach(x=>x.hidden=true);
+  ensureApp(); updateHeaderForUser(); document.querySelector("main").querySelectorAll(":scope > section:not(#studentApp)").forEach(x=>x.hidden=true);
   $("#studentApp").hidden=false; $("#welcomeTitle").textContent="مرحباً، "+currentUser.name;
   $("#welcomeSub").textContent=currentUser.role==="admin"?"لوحة إدارة منصة الكيمياء":"تابع اختباراتك ودرجاتك والمهام التي فاتتك";
   if(currentUser.role==="admin") await renderAdmin(); else await renderStudent();
@@ -62,6 +70,7 @@ async function renderStudent(){
     return '<article class="card test"><div><h3>'+esc(e.title)+'</h3><p>'+esc(e.description||"")+' · '+e.durationMinutes+' دقيقة</p>'+(e.state==="completed"?'<p class="score-line">نتيجتك: '+e.score+' / '+e.totalPoints+'</p>':"")+'</div><div class="test-actions"><span class="pill state-'+e.state+'">'+labels[e.state]+'</span>'+(action?'<button class="btn primary small" data-open="'+esc(e.id)+'">'+(e.state==="completed"?"عرض النتيجة":"ابدأ الاختبار")+'</button>':"")+'</div></article>';
   }).join("");
   list.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openExam(b.dataset.open)));
+  await renderLearningStudent();
 }
 function viewResult(e){ $("#appContent").innerHTML = '<div class="card result-card"><h2>نتيجة اختبار: '+esc(e.title)+'</h2><div class="result-number">'+e.score+' / '+e.totalPoints+'</div><button class="btn primary" id="backToStudent">العودة إلى الاختبارات</button></div>'; $("#backToStudent").addEventListener("click",renderStudent); }
 async function openExam(id){
@@ -85,6 +94,7 @@ async function openExam(id){
 async function renderAdmin(){
   const [exams,students,attempts]=await Promise.all([api("/api/admin/exams"),api("/api/admin/students"),api("/api/admin/attempts")]);
   $("#appContent").innerHTML='<div class="cards app-stats"><article class="card"><div class="card-icon">👨‍🎓</div><h3>'+students.students.length+'</h3><p>الطلاب المسجلون</p></article><article class="card"><div class="card-icon">🧪</div><h3>'+exams.exams.length+'</h3><p>الاختبارات</p></article><article class="card"><div class="card-icon">📊</div><h3>'+attempts.attempts.length+'</h3><p>المحاولات والنتائج</p></article></div><div class="card admin-create"><h2>إنشاء اختبار جديد</h2><form id="createExamForm"><div class="field"><label>عنوان الاختبار</label><input name="title" required minlength="3" placeholder="مثال: اختبار الروابط الكيميائية"></div><div class="field"><label>وصف الاختبار</label><input name="description" placeholder="الوحدة أو الدرس"></div><div class="field"><label>المدة بالدقائق</label><input name="duration" type="number" min="1" max="300" value="30" required></div><div class="field"><label>وقت الفتح (اختياري)</label><input name="opens" type="datetime-local"></div><div class="field"><label>وقت الإغلاق (اختياري)</label><input name="closes" type="datetime-local"></div><div class="field"><label>الأسئلة بصيغة JSON</label><textarea name="questions" rows="8" required dir="ltr"></textarea></div><div class="actions"><button class="btn primary" type="submit" name="publish" value="true">إنشاء ونشر</button><button class="btn ghost" type="submit" name="publish" value="false">حفظ كمسودة</button></div></form></div><h2 class="app-heading">الاختبارات</h2><div class="testlist">'+exams.exams.map(e=>'<article class="card test"><div><h3>'+esc(e.title)+'</h3><p>'+e.question_count+' سؤال · '+e.attempt_count+' محاولة</p></div><span class="pill">'+(e.status==="published"?"منشور":e.status==="draft"?"مسودة":"مؤرشف")+'</span></article>').join("")+'</div><h2 class="app-heading">الطلاب</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>الاسم</th><th>البريد</th><th>المحاولات</th><th>الحالة</th></tr></thead><tbody>'+students.students.map(s=>'<tr><td>'+esc(s.name)+'</td><td>'+esc(s.email)+'</td><td>'+s.attempts+'</td><td>'+(s.active?"نشط":"موقوف")+'</td></tr>').join("")+'</tbody></table></div><h2 class="app-heading">آخر النتائج</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>الطالب</th><th>الاختبار</th><th>الدرجة</th><th>التاريخ</th></tr></thead><tbody>'+attempts.attempts.map(a=>'<tr><td>'+esc(a.student_name)+'</td><td>'+esc(a.exam_title)+'</td><td>'+a.score+' / '+a.total_points+'</td><td>'+new Date(a.submitted_at+"Z").toLocaleString("ar-SA")+'</td></tr>').join("")+'</tbody></table></div>';
+  await renderLearningAdmin();
   $("#createExamForm").addEventListener("submit",async ev=>{
     ev.preventDefault();const form=ev.currentTarget;const fd=new FormData(form);let questions;
     try{questions=JSON.parse(fd.get("questions"));if(!Array.isArray(questions))throw 0;}catch{toast("صيغة الأسئلة JSON غير صحيحة");return;}
@@ -119,3 +129,28 @@ document.addEventListener("DOMContentLoaded",()=>{
     history.replaceState({}, "", cleanUrl);
   }
 });
+
+
+async function renderLearningStudent(){
+ const d=await api("/api/learning"),root=$("#appContent");
+ const units=id=>(d.units.find(x=>x.id===id)||{}).title||"محتوى عام";
+ root.insertAdjacentHTML("beforeend",'<h2 class="app-heading">الدروس والوحدات</h2><div class="cards" id="lessonCards"></div><h2 class="app-heading">التجارب والأنشطة</h2><div class="cards" id="experimentCards"></div><h2 class="app-heading">مصادر التعلم</h2><div class="testlist" id="resourceCards"></div><h2 class="app-heading">إعلانات الأستاذ</h2><div class="testlist" id="announcementCards"></div>');
+ $("#lessonCards").innerHTML=d.lessons.length?d.lessons.map(x=>'<article class="card"><span class="pill">'+esc(units(x.unit_id))+'</span><h3 style="margin-top:12px">'+esc(x.title)+'</h3><p>'+esc(x.summary)+'</p><button class="btn primary small" data-lesson="'+esc(x.id)+'" style="margin-top:14px">فتح الدرس</button></article>').join(""):'<article class="card"><p>لا توجد دروس منشورة حالياً.</p></article>';
+ $("#lessonCards").querySelectorAll("[data-lesson]").forEach(b=>b.onclick=()=>{const x=d.lessons.find(y=>y.id===b.dataset.lesson);$("#appContent").innerHTML='<button class="btn ghost" id="backLessons">العودة</button><article class="card" style="margin-top:16px"><h2>'+esc(x.title)+'</h2><p>'+esc(x.summary)+'</p><div style="white-space:pre-wrap;line-height:2;margin-top:18px">'+esc(x.content)+'</div></article>';$("#backLessons").onclick=renderStudent;});
+ $("#experimentCards").innerHTML=d.experiments.length?d.experiments.map(x=>'<article class="card"><h3>'+esc(x.title)+'</h3><p>'+esc(x.objective)+'</p><p style="margin-top:10px"><b>السلامة:</b> '+esc(x.safety_notes)+'</p><details style="margin-top:12px"><summary>خطوات النشاط</summary><ol>'+x.steps.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ol></details></article>').join(""):'<article class="card"><p>لا توجد تجارب منشورة حالياً.</p></article>';
+ $("#resourceCards").innerHTML=d.resources.length?d.resources.map(x=>'<article class="card test"><div><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p></div><a class="btn primary small" href="'+esc(x.resource_url)+'" target="_blank" rel="noopener">فتح المصدر</a></article>').join(""):'<article class="card"><p>لا توجد مصادر منشورة.</p></article>';
+ $("#announcementCards").innerHTML=d.announcements.length?d.announcements.map(x=>'<article class="card"><h3>'+esc(x.title)+'</h3><p>'+esc(x.body)+'</p></article>').join(""):'<article class="card"><p>لا توجد إعلانات حالياً.</p></article>';
+}
+async function renderLearningAdmin(){
+ const d=await api("/api/learning"),root=$("#appContent");
+ const opts=d.units.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("");
+ root.insertAdjacentHTML("beforeend",'<h2 class="app-heading">نشر المحتوى التعليمي</h2><div class="card admin-create"><form id="learningForm"><div class="field"><label>نوع المحتوى</label><select name="type"><option value="unit">وحدة دراسية</option><option value="lesson">درس</option><option value="experiment">تجربة / نشاط افتراضي</option><option value="resource">مصدر تعليمي</option><option value="announcement">إعلان</option></select></div><div class="field"><label>العنوان</label><input name="title" required minlength="3"></div><div class="field"><label>الوصف أو الملخص</label><textarea name="description" rows="3"></textarea></div><div class="field"><label>الوحدة المرتبطة (اختياري)</label><select name="unitId"><option value="">بدون وحدة</option>'+opts+'</select></div><div class="field"><label>محتوى الدرس / خطوات النشاط (كل خطوة بسطر) / رابط المصدر</label><textarea name="content" rows="7"></textarea></div><div class="field"><label>ملاحظات السلامة للتجربة</label><textarea name="safety" rows="3">نشاط تعليمي افتراضي فقط. لا تنفذ أي تجربة بمواد حقيقية دون إشراف المعلم.</textarea></div><label style="display:flex;gap:8px;align-items:center;margin:12px 0"><input type="checkbox" name="publish" checked> نشر للطلاب</label><button class="btn primary" type="submit">حفظ المحتوى</button></form></div>');
+ $("#learningForm").onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(ev.currentTarget),type=fd.get("type"),v=String(fd.get("content")||"");const body={type,title:fd.get("title"),description:fd.get("description"),unitId:fd.get("unitId"),publish:fd.get("publish")==="on"};
+ if(type==="lesson")body.content=v;
+ if(type==="experiment"){body.objective=fd.get("description");body.safetyNotes=fd.get("safety");body.steps=v.split("\n").map(x=>x.trim()).filter(Boolean);}
+ if(type==="resource")body.url=v;
+ if(type==="announcement")body.body=fd.get("description");
+ if(type==="unit")body.sortOrder=d.units.length;
+ try{await api("/api/learning",{method:"POST",body:JSON.stringify(body)});toast(body.publish?"تم النشر للطلاب":"تم حفظ المسودة");await renderAdmin();}catch(e){toast(e.message);}
+ };
+}
