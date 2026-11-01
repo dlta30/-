@@ -1,5 +1,5 @@
-import { json, readJson } from "../../../_lib/http.js";
-import { hashPassword, requireUser } from "../../../_lib/auth.js";
+import { json, readJson } from "../../_lib/http.js";
+import { hashPassword, requireUser } from "../../_lib/auth.js";
 
 export async function onRequestPost(context) {
   const auth = await requireUser(context);
