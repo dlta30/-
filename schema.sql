@@ -30,9 +30,11 @@ CREATE TABLE IF NOT EXISTS exams (
   closes_at TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','published','archived')),
   created_by TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  semester TEXT NOT NULL DEFAULT '1'
 );
 CREATE INDEX IF NOT EXISTS idx_exams_status ON exams(status);
+CREATE INDEX IF NOT EXISTS idx_exams_semester ON exams(semester, status);
 
 CREATE TABLE IF NOT EXISTS questions (
   id TEXT PRIMARY KEY,
@@ -75,8 +77,10 @@ CREATE TABLE IF NOT EXISTS learning_units (
   sort_order INTEGER NOT NULL DEFAULT 0,
   published INTEGER NOT NULL DEFAULT 0,
   created_by TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  semester TEXT NOT NULL DEFAULT '1'
 );
+CREATE INDEX IF NOT EXISTS idx_learning_units_semester ON learning_units(semester, published, sort_order);
 CREATE TABLE IF NOT EXISTS lessons (
   id TEXT PRIMARY KEY,
   unit_id TEXT REFERENCES learning_units(id) ON DELETE SET NULL,
