@@ -12,7 +12,7 @@ async function api(path, options = {}) {
   return data;
 }
 function toast(message) { const el=$("#toast"); el.textContent=message; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3500); }
-function openAuth(mode){ authMode=mode; renderAuth(); $("#auth").classList.add("show"); }
+function openAuth(mode){ authMode=mode; renderAuth(); const modal=$("#auth"); if(!modal) { console.error("Authentication modal is missing"); return; } modal.classList.add("show"); modal.setAttribute("aria-modal","true"); }
 function closeAuth(){ $("#auth").classList.remove("show"); }
 function toggleAuth(){ authMode=authMode==="login"?"register":"login"; renderAuth(); }
 function renderAuth(){
@@ -144,6 +144,8 @@ async function boot(){
   try{const data=await api("/api/auth/me");if(data.user){currentUser=data.user;await showApp();if(new URLSearchParams(location.search).get("google_setup")==="1")showGooglePasswordSetup();}}catch(e){console.error(e);}
 }
 document.addEventListener("DOMContentLoaded",()=>{
+  const loginButton=$("#headerLogin");
+  if(loginButton) loginButton.addEventListener("click",()=>openAuth("login"));
   $("#auth").addEventListener("click",e=>{if(e.target.id==="auth")closeAuth();});
   document.querySelectorAll(".nav a").forEach(link=>link.addEventListener("click",ev=>{
     if(!currentUser)return;
