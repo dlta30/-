@@ -55,9 +55,11 @@ async function handleGoogleCallback({ request, env }, markStage) {
   markStage("database_lookup");
   const email = String(info.email).trim().toLowerCase();
   let user = await env.DB.prepare("SELECT id,name,email,role,active FROM users WHERE email=?").bind(email).first();
+  let needsPasswordSetup = false;
   if (user && !user.active) return fail(request, "disabled");
   markStage("user_create");
   if (!user) {
+    needsPasswordSetup = true;
     const id = newId();
     const name = String(info.name || info.given_name || email.split("@")[0]).trim().slice(0, 80) || "طالب";
     const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(48)), b => b.toString(16).padStart(2, "0")).join("");
@@ -83,7 +85,9 @@ async function handleGoogleCallback({ request, env }, markStage) {
 
   markStage("session_create");
   const session = await createSession(env.DB, user.id);
-  const headers = new Headers({ location: new URL("/", request.url).toString(), "set-cookie": session });
+  const destination = new URL("/", request.url);
+  if (needsPasswordSetup) destination.searchParams.set("google_setup", "1");
+  const headers = new Headers({ location: destination.toString(), "set-cookie": session });
   headers.append("set-cookie", "google_oauth_state=; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
   return new Response(null, { status: 302, headers });
 }
