@@ -10,6 +10,11 @@ export async function onRequestPost(context) {
   if((exam.opens_at&&Date.parse(exam.opens_at)>now)||(exam.closes_at&&Date.parse(exam.closes_at)<now))return json({error:"انتهى وقت الاختبار أو لم يبدأ بعد"},403);
   const previous=await context.env.DB.prepare("SELECT id FROM attempts WHERE exam_id=? AND student_id=?").bind(id,auth.user.id).first();
   if(previous)return json({error:"سبق أن أرسلت إجابتك لهذا الاختبار"},409);
+  const started=await context.env.DB.prepare("SELECT started_at FROM exam_starts WHERE exam_id=? AND student_id=?").bind(id,auth.user.id).first();
+  if(!started)return json({error:"افتح الاختبار من صفحة المنصة أولاً"},400);
+  const elapsed=Date.now()-Date.parse(started.started_at+"Z");
+  const examMeta=await context.env.DB.prepare("SELECT duration_minutes FROM exams WHERE id=?").bind(id).first();
+  if(elapsed>(Number(examMeta.duration_minutes)*60000+120000))return json({error:"انتهى الوقت المحدد للاختبار"},403);
   const body=await readJson(context.request);
   const answers=body?.answers;
   if(!answers||typeof answers!=="object"||Array.isArray(answers))return json({error:"الإجابات غير صالحة"},400);
