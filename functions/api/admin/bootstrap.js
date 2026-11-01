@@ -13,7 +13,7 @@ export async function onRequestPost({ request, env }) {
     env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin'").first(),
     env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first()
   ]);
-  if (Number(count?.n || 0) > 0) return json({ error: "يوجد حساب مدير مُعد مسبقاً" }, 409);
+  if (Number(count?.n || 0) > 0 && !existing) return json({ error: "يوجد حساب مدير مُعد مسبقاً، ولا يمكن إنشاء مدير ثانٍ" }, 409);
   const password = String(body?.password || "");
   if (existing) {
     if (password && (password.length < 8 || password.length > 128))
