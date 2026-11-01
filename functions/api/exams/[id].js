@@ -5,8 +5,12 @@ export async function onRequestGet({ params, env, ...context }) {
   const exam=await env.DB.prepare("SELECT id,title,description,duration_minutes,opens_at,closes_at,status FROM exams WHERE id=?").bind(params.id).first();
   if(!exam)return json({error:"الاختبار غير موجود"},404);
   if(auth.user.role!=="admin"&&exam.status!=="published")return json({error:"الاختبار غير متاح"},404);
-  const attempt=auth.user.role==="student"?await env.DB.prepare("SELECT id FROM attempts WHERE exam_id=? AND student_id=?").bind(params.id,auth.user.id).first():null;
-  if(attempt)return json({exam,alreadyAttempted:true});
+  const attempt=auth.user.role==="student"?await env.DB.prepare("SELECT id,score,total_points,answers_json,submitted_at FROM attempts WHERE exam_id=? AND student_id=?").bind(params.id,auth.user.id).first():null;
+  if(attempt){
+    const review=await env.DB.prepare("SELECT id,prompt,options_json,correct_index,points,sort_order FROM questions WHERE exam_id=? ORDER BY sort_order").bind(params.id).all();
+    let answers={};try{answers=JSON.parse(attempt.answers_json||"{}");}catch{}
+    return json({exam,alreadyAttempted:true,result:{score:attempt.score,totalPoints:attempt.total_points,percentage:attempt.total_points?Math.round(attempt.score/attempt.total_points*100):0,submittedAt:attempt.submitted_at},review:(review.results||[]).map(q=>({id:q.id,prompt:q.prompt,options:JSON.parse(q.options_json),correctIndex:q.correct_index,selectedIndex:Number.isInteger(Number(answers[q.id]))?Number(answers[q.id]):-1,points:q.points}))});
+  }
   const now=Date.now();
   if(auth.user.role!=="admin"&&((exam.opens_at&&Date.parse(exam.opens_at)>now)||(exam.closes_at&&Date.parse(exam.closes_at)<now)))
     return json({error:"الاختبار غير متاح في الوقت الحالي"},403);
