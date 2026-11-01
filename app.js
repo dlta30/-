@@ -1,5 +1,7 @@
 const $ = (s) => document.querySelector(s);
 let currentUser = null;
+let examTimerInterval = null;
+let examTimedOut = false;
 let authMode = 'login';
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials: "same-origin", ...options,
@@ -77,14 +79,16 @@ async function openExam(id){
   try{
     const data=await api("/api/exams/"+encodeURIComponent(id));
     if(data.alreadyAttempted){const board=await api("/api/dashboard");const result=board.exams.find(x=>x.id===id);if(result)viewResult(result);else toast("سبق أن أكملت هذا الاختبار");return;}
-    const exam=data.exam;
-    $("#appContent").innerHTML='<button class="btn ghost" id="backDashboard">← العودة</button><div class="card exam-card"><div class="eyebrow">اختبار كيمياء</div><h2>'+esc(exam.title)+'</h2><p>'+esc(exam.description||"")+' · المدة '+exam.duration_minutes+' دقيقة</p><form id="examForm">'+data.questions.map((q,i)=>'<div class="question"><h3>'+(i+1)+'. '+esc(q.prompt)+' <small>('+q.points+' درجة)</small></h3>'+q.options.map((o,j)=>'<label class="answer-option"><input type="radio" name="'+esc(q.id)+'" value="'+j+'" required> '+esc(o)+'</label>').join("")+'</div>').join("")+'<button class="btn primary" type="submit">تسليم الاختبار</button></form></div>';
-    $("#backDashboard").addEventListener("click",renderStudent);
+    const exam=data.exam;examTimedOut=false;if(examTimerInterval)clearInterval(examTimerInterval);
+    $("#appContent").innerHTML='<button class="btn ghost" id="backDashboard">← العودة</button><div class="card exam-card"><div class="eyebrow">اختبار كيمياء</div><h2>'+esc(exam.title)+'</h2><p>'+esc(exam.description||"")+' · المدة '+exam.duration_minutes+' دقيقة</p><div class="exam-countdown" id="examCountdown">⏱️ جارٍ تجهيز المؤقت...</div><form id="examForm">'+data.questions.map((q,i)=>'<div class="question"><h3>'+(i+1)+'. '+esc(q.prompt)+' <small>('+q.points+' درجة)</small></h3>'+q.options.map((o,j)=>'<label class="answer-option"><input type="radio" name="'+esc(q.id)+'" value="'+j+'" required> '+esc(o)+'</label>').join("")+'</div>').join("")+'<button class="btn primary" type="submit">تسليم الاختبار</button></form></div>';
+    $("#backDashboard").addEventListener("click",()=>{if(examTimerInterval)clearInterval(examTimerInterval);renderStudent();});
+    const timer=$("#examCountdown"),startedAt=data.startTime?Date.parse(data.startTime.replace(" ","T")+"Z"):Date.now(),deadline=startedAt+Number(exam.duration_minutes)*60000;
+    const tick=()=>{const remaining=Math.max(0,deadline-Date.now()),mins=Math.floor(remaining/60000),secs=Math.floor((remaining%60000)/1000);timer.textContent="⏱️ الوقت المتبقي: "+String(mins).padStart(2,"0")+":"+String(secs).padStart(2,"0");if(remaining<=0&&!examTimedOut){examTimedOut=true;timer.textContent="انتهى الوقت — جارٍ تسليم إجاباتك";$("#examForm").querySelectorAll("input[type=radio]").forEach(x=>x.required=false);$("#examForm").requestSubmit();}};tick();examTimerInterval=setInterval(tick,1000);
     $("#examForm").addEventListener("submit",async ev=>{
       ev.preventDefault();
-      if(!confirm("هل أنت متأكد من تسليم إجاباتك؟ لا يمكن إعادة المحاولة."))return;
-      const answers={}; for(const q of data.questions){const v=new FormData(ev.currentTarget).get(q.id);if(v===null){toast("أجب عن جميع الأسئلة أولاً");return;}answers[q.id]=Number(v);}
-      try{const result=await api("/api/exams/"+encodeURIComponent(id)+"/submit",{method:"POST",body:JSON.stringify({answers})});
+      if(!examTimedOut&&!confirm("هل أنت متأكد من تسليم إجاباتك؟ لا يمكن إعادة المحاولة."))return;
+      const answers={}; for(const q of data.questions){const v=new FormData(ev.currentTarget).get(q.id);if(v===null){if(!examTimedOut){toast("أجب عن جميع الأسئلة أولاً");return;}}else answers[q.id]=Number(v);}
+      try{if(examTimerInterval)clearInterval(examTimerInterval);const result=await api("/api/exams/"+encodeURIComponent(id)+"/submit",{method:"POST",body:JSON.stringify({answers})});
         $("#appContent").innerHTML='<div class="card result-card"><div class="card-icon">🎉</div><h2>تم تسليم الاختبار بنجاح</h2><div class="result-number">'+result.score+' / '+result.totalPoints+'</div><p>نسبتك: '+result.percentage+'%</p><button class="btn primary" id="backAfterResult">العودة إلى لوحة الطالب</button></div>';
         $("#backAfterResult").addEventListener("click",renderStudent);
       }catch(e){toast(e.message);}
