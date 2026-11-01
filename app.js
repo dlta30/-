@@ -110,7 +110,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   const params = new URLSearchParams(window.location.search);
   if (params.has("google_error")) {
     const messages = { config: "تسجيل Google غير مكتمل الإعداد", state: "انتهت صلاحية محاولة تسجيل الدخول، حاول مجدداً", token: "تعذر التحقق من حساب Google", identity: "تعذر التحقق من هوية حساب Google", disabled: "هذا الحساب موقوف، تواصل مع إدارة المنصة", account: "تعذر إنشاء الحساب" };
-    toast(messages[params.get("google_error")] || "تعذر تسجيل الدخول باستخدام Google");
+    const stage = params.get("stage");
+    const stageLabels = { token_exchange: "تبادل رمز Google", token_response: "استجابة رمز Google", token_parse: "قراءة رمز Google", identity_check: "التحقق من الهوية", identity_parse: "قراءة بيانات الهوية", database_lookup: "البحث عن حساب الطالب", user_create: "إنشاء حساب الطالب", session_create: "إنشاء جلسة الدخول", start: "بداية المعالجة" };
+    const detail = params.get("google_error") === "server" && stage ? " (المرحلة: " + (stageLabels[stage] || stage) + ")" : "";
+    toast((messages[params.get("google_error")] || "تعذر تسجيل الدخول باستخدام Google") + detail);
     params.delete("google_error");
     const cleanUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
     history.replaceState({}, "", cleanUrl);
