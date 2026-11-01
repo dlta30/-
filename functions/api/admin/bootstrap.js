@@ -11,22 +11,41 @@ function validKey(provided, expected) {
   return diff === 0;
 }
 
+async function tableColumns(db, table) {
+  const result = await db.prepare(`PRAGMA table_info("${table}")`).all();
+  return (result.results || []).map(column => column.name);
+}
+
 async function inspectDatabase(db) {
-  const tables = ["users", "sessions", "exams", "questions", "attempts", "learning_units", "lessons", "student_progress"];
-  const found = [];
-  for (const table of tables) {
-    const row = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
-    if (row) found.push(table);
+  const required = {
+    users: ["id", "name", "email", "password_hash", "password_salt", "role", "active"],
+    sessions: ["id", "user_id", "token_hash", "expires_at"],
+    exams: ["id", "title", "created_by", "semester"],
+    questions: ["id", "exam_id", "prompt", "options_json", "correct_index"],
+    attempts: ["id", "exam_id", "student_id", "score", "total_points", "answers_json"],
+    learning_units: ["id", "title", "created_by", "semester"],
+    lessons: ["id", "unit_id", "title", "content", "created_by"],
+    student_progress: ["id", "student_id", "lesson_id"]
+  };
+  const missingTables = [];
+  const missingColumns = [];
+  for (const [table, columns] of Object.entries(required)) {
+    const exists = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
+    if (!exists) { missingTables.push(table); continue; }
+    const actual = await tableColumns(db, table);
+    for (const column of columns) if (!actual.includes(column)) missingColumns.push(table + "." + column);
   }
-  const missing = tables.filter(x => !found.includes(x));
-  let admin = null, admins = 0;
-  if (found.includes("users")) {
-    const row = await db.prepare("SELECT id,name,email,role,active FROM users WHERE email=?").bind(ADMIN_EMAIL).first();
-    admin = row || null;
+
+  let admin = null, adminCount = 0;
+  if (!missingTables.includes("users") && !required.users.some(c => missingColumns.includes("users." + c))) {
+    admin = await db.prepare("SELECT id,name,email,role,active FROM users WHERE email=?").bind(ADMIN_EMAIL).first() || null;
     const count = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin'").first();
-    admins = Number(count?.n || 0);
+    adminCount = Number(count?.n || 0);
   }
-  return { database: missing.length ? "incomplete" : "ready", missingTables: missing, admin, adminCount: admins };
+  return {
+    database: missingTables.length || missingColumns.length ? "incomplete" : "ready",
+    missingTables, missingColumns, admin, adminCount
+  };
 }
 
 export async function onRequestPost({ request, env }) {
@@ -42,13 +61,17 @@ export async function onRequestPost({ request, env }) {
     status = await inspectDatabase(env.DB);
   } catch (error) {
     console.error("Admin bootstrap database inspection failed:", error?.stack || error);
-    return json({ error: "تعذر قراءة قاعدة D1. تحقق من ربط DB وصلاحيات قاعدة البيانات ثم أعد النشر.", detail: String(error?.message || "") }, 500);
+    return json({ error: "تعذر فحص بنية قاعدة D1. تحقق من ربط DB وصلاحيات القاعدة.", detail: String(error?.message || error) }, 500);
   }
 
   if (body?.action === "check") return json({ ok: true, ...status });
 
-  if (status.missingTables.length) {
-    return json({ error: "قاعدة البيانات غير مكتملة. نفّذ ملف schema.sql كاملاً في D1 Console قبل إعداد المدير.", missingTables: status.missingTables }, 503);
+  if (status.missingTables.length || status.missingColumns.length) {
+    return json({
+      error: "بنية قاعدة البيانات غير مكتملة. راجع العناصر الناقصة أدناه قبل إعداد المدير.",
+      missingTables: status.missingTables,
+      missingColumns: status.missingColumns
+    }, 503);
   }
 
   const password = String(body?.password || "");
@@ -75,6 +98,10 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: true, message: "تم إنشاء حساب الأستاذ حسين العباس بنجاح. يمكنك الآن تسجيل الدخول.", email: ADMIN_EMAIL, role: "admin" }, 201);
   } catch (error) {
     console.error("Admin bootstrap update failed:", error?.stack || error);
-    return json({ error: "تعذر حفظ حساب المدير في قاعدة البيانات. راجع D1 Console وتأكد من تطبيق schema.sql.", detail: String(error?.message || "") }, 500);
+    return json({
+      error: "تعذر حفظ حساب المدير في قاعدة البيانات.",
+      detail: String(error?.message || error),
+      hint: "افتح D1 Console وتأكد أن قاعدة البيانات المرتبطة بالمشروع هي نفسها التي نفذت عليها schema.sql."
+    }, 500);
   }
 }
