@@ -15,5 +15,6 @@ export async function onRequestGet({ params, env, ...context }) {
     await env.DB.prepare("INSERT OR IGNORE INTO exam_starts (id,exam_id,student_id,started_at) VALUES (?,?,?,datetime('now'))")
       .bind(crypto.randomUUID(),params.id,auth.user.id).run();
   }
-  return json({exam,alreadyAttempted:!!attempt,questions:(questions.results||[]).map(q=>({id:q.id,prompt:q.prompt,options:JSON.parse(q.options_json),points:q.points}))});
+  const started=auth.user.role==="student"?await env.DB.prepare("SELECT started_at FROM exam_starts WHERE exam_id=? AND student_id=?").bind(params.id,auth.user.id).first():null;
+  return json({exam,alreadyAttempted:!!attempt,startTime:started?.started_at||null,questions:(questions.results||[]).map(q=>({id:q.id,prompt:q.prompt,options:JSON.parse(q.options_json),points:q.points}))});
 }
