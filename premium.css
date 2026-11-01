@@ -1,0 +1,60 @@
+/* Premium chemistry learning experience */
+:root{--gold:#d8bd82;--gold-soft:#f0dfb8;--ink:#0c0e12;--surface:#171a20;--surface-2:#20242c;--line:#343943;--muted:#a9a398}
+body{background:radial-gradient(ellipse at 82% -12%,#66502a38,transparent 38%),radial-gradient(ellipse at 5% 48%,#3d424d25,transparent 34%),#0c0e12}
+.top{position:sticky;top:0;z-index:8;background:#0c0e12e8;backdrop-filter:blur(18px);padding-inline:24px}
+.brand-copy b{color:var(--gold-soft)}
+.logo-mark{background:linear-gradient(145deg,#332b1d,#121419);border-color:#d8bd826e}
+.eyebrow{border-color:#d8bd8240;background:#d8bd8210;color:var(--gold-soft)}
+.dot{background:#a7c4a2;box-shadow:0 0 12px #a7c4a2}
+.primary{background:linear-gradient(120deg,#e8d09a,#b6955b);color:#17140d;box-shadow:0 8px 25px #d8bd821c}
+.ghost{border-color:#ffffff20;background:#ffffff08}
+.card{background:linear-gradient(145deg,#20232a,#15171c);border-color:#ffffff14;box-shadow:0 18px 42px #0004;transition:transform .22s,border-color .22s}
+.card:hover{border-color:#d8bd8240;transform:translateY(-2px)}
+.card-icon{background:#d8bd8212;border-color:#d8bd8238;color:var(--gold-soft)}
+.pill{background:#d8bd8210;border-color:#d8bd8240;color:var(--gold-soft)}
+#studentApp{max-width:1240px;padding-bottom:72px}
+#studentApp .section-head{padding:22px 24px;background:linear-gradient(120deg,#24231f,#17191e);border:1px solid #d8bd8230;border-radius:22px;margin:0 0 24px}
+#studentApp .section-head h2{font-size:clamp(22px,3vw,30px)}
+#studentApp .app-stats{gap:18px}
+#studentApp .app-stats .card{position:relative;overflow:hidden;min-height:130px;padding:24px}
+#studentApp .app-stats .card:after{content:"";position:absolute;width:100px;height:100px;border:1px solid #d8bd8222;border-radius:50%;left:-30px;bottom:-55px}
+#studentApp .app-stats .card h3{color:var(--gold-soft);font-size:32px}
+.app-heading{display:flex;align-items:center;gap:12px;font-size:22px;color:#f3e9d4;margin-top:40px}
+.app-heading:before{content:"";width:4px;height:25px;border-radius:4px;background:linear-gradient(#f0dfb8,#a88750)}
+.admin-create{margin:22px 0;padding:clamp(18px,3vw,30px)}
+.field input,.field textarea,.field select{width:100%;padding:13px 14px;border:1px solid #3c414b;background:#101216;border-radius:12px;color:#f5f1e8;outline:none;font:inherit}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:#d8bd82;box-shadow:0 0 0 3px #d8bd8217}
+.field textarea{resize:vertical;line-height:1.9}
+.field label{color:#d8d0c0;font-weight:600}
+.question-builder-head,.question-editor-top{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.question-builder-head{margin:28px 0 14px;padding-top:20px;border-top:1px solid #ffffff16}
+.question-builder-head h3{margin:0 0 5px;color:var(--gold-soft)}
+.question-builder-head p{font-size:12px;color:var(--muted);margin:0}
+.question-editor{margin:14px 0;padding:20px;background:#111318;border-color:#d8bd822b}
+.question-editor-top{padding-bottom:12px;border-bottom:1px solid #ffffff13}
+.question-editor-top b{color:var(--gold-soft)}
+.text-danger{border:0;background:#7e30301c;color:#f2a5a5;padding:8px 12px;border-radius:9px;cursor:pointer}
+.options-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.question-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#studentApp .test{align-items:flex-start;padding:20px}
+#studentApp .test-actions{justify-content:flex-end}
+#studentApp .test h3{font-size:16px;color:#f2e9d8}
+#studentApp .test p{font-size:12px}
+#studentApp .question{padding:18px;margin:16px 0;background:#111318;border:1px solid #ffffff14;border-radius:15px}
+#studentApp .answer-option{display:flex;align-items:center;gap:10px;padding:12px;margin-top:8px;background:#ffffff06;border:1px solid #ffffff12;border-radius:10px;cursor:pointer}
+#studentApp .answer-option:has(input:checked){border-color:#d8bd82;background:#d8bd8214}
+.table-wrap{overflow:auto;border:1px solid #ffffff17;border-radius:16px;margin:14px 0 28px;background:#17191e}
+.data-table{width:100%;border-collapse:collapse;min-width:620px}
+.data-table th,.data-table td{padding:14px 16px;text-align:right;border-bottom:1px solid #ffffff10;font-size:12px}
+.data-table th{background:#25231e;color:var(--gold-soft)}
+.data-table td{color:#ddd6c9}
+.result-number{font:800 42px "Plus Jakarta Sans";color:var(--gold-soft);margin:18px 0}
+#headerProfile{border-color:#d8bd8250;color:#f0dfb8}
+#headerLogout{padding:10px 14px}
+#headerLogin{padding:10px 16px}
+#studentApp details{padding:14px;background:#ffffff06;border-radius:12px}
+#studentApp summary{color:var(--gold-soft);font-weight:700;cursor:pointer}
+#studentApp ol{line-height:2.2;color:#ddd6c9}
+.toast{background:#25231e;border-color:#d8bd8266;color:#fff4d9;box-shadow:0 14px 40px #0008}
+@media(max-width:800px){#studentApp .app-stats{grid-template-columns:1fr 1fr}.options-grid{grid-template-columns:1fr}.question-meta{grid-template-columns:1fr}.top{padding-inline:12px}}
+@media(max-width:480px){#studentApp .app-stats{grid-template-columns:1fr}.question-builder-head{align-items:flex-start;flex-direction:column}.nav{gap:7px}.nav .btn{padding:9px 10px;font-size:11px}}
