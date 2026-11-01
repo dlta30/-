@@ -16,6 +16,24 @@ async function tableColumns(db, table) {
   return (result.results || []).map(column => column.name);
 }
 
+async function ensureSemesterColumns(db) {
+  const migrations = [
+    ["exams", "semester", "ALTER TABLE exams ADD COLUMN semester TEXT NOT NULL DEFAULT '1'"],
+    ["learning_units", "semester", "ALTER TABLE learning_units ADD COLUMN semester TEXT NOT NULL DEFAULT '1'"]
+  ];
+  const applied = [];
+  for (const [table, column, sql] of migrations) {
+    const exists = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
+    if (!exists) continue;
+    const columns = await tableColumns(db, table);
+    if (!columns.includes(column)) {
+      await db.prepare(sql).run();
+      applied.push(table + "." + column);
+    }
+  }
+  return applied;
+}
+
 async function inspectDatabase(db) {
   const required = {
     users: ["id", "name", "email", "password_hash", "password_salt", "role", "active"],
@@ -56,15 +74,20 @@ export async function onRequestPost({ request, env }) {
   const provided = String(body?.setupKey || "");
   if (!validKey(provided, env.ADMIN_SETUP_KEY)) return json({ error: "مفتاح الإعداد غير مطابق. انسخ قيمة ADMIN_SETUP_KEY من نفس مشروع Pages وبيئة Production، ثم احفظها وأعد النشر." }, 403);
 
-  let status;
+  let status, autoMigrations = [];
   try {
+    autoMigrations = await ensureSemesterColumns(env.DB);
     status = await inspectDatabase(env.DB);
   } catch (error) {
-    console.error("Admin bootstrap database inspection failed:", error?.stack || error);
-    return json({ error: "تعذر فحص بنية قاعدة D1. تحقق من ربط DB وصلاحيات القاعدة.", detail: String(error?.message || error) }, 500);
+    console.error("Admin bootstrap database inspection/migration failed:", error?.stack || error);
+    return json({
+      error: "تعذر فحص أو تحديث أعمدة قاعدة D1 تلقائياً.",
+      detail: String(error?.message || error),
+      hint: "تأكد من ربط DB بقاعدة D1 الصحيحة وأن الجداول الأساسية موجودة."
+    }, 500);
   }
 
-  if (body?.action === "check") return json({ ok: true, ...status });
+  if (body?.action === "check") return json({ ok: true, ...status, autoMigrations });
 
   if (status.missingTables.length || status.missingColumns.length) {
     return json({
