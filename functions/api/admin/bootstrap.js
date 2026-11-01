@@ -28,8 +28,8 @@ export async function onRequestPost({ request, env }) {
     }
     return json({ ok: true, message: "تم ترقية حساب الأستاذ الموجود إلى مدير. كلمة المرور الحالية لم تتغير." }, 200);
   }
-  if (password.length < 12 || password.length > 128)
-    return json({ error: "لإنشاء حساب جديد، كلمة مرور المدير يجب أن تكون 12 حرفاً على الأقل" }, 400);
+  if (password.length < 8 || password.length > 128)
+    return json({ error: "لإنشاء حساب جديد، كلمة مرور المدير يجب أن تكون 8 أحرف على الأقل" }, 400);
   const { salt, hash } = await hashPassword(password);
   await env.DB.prepare("INSERT INTO users (id,name,email,password_hash,password_salt,role) VALUES (?,?,?,?,?,'admin')")
     .bind(newId(), name, email, hash, salt).run();
