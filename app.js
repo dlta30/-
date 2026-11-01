@@ -222,7 +222,7 @@ async function renderLearningAdmin(){
 
 function renderStudentLabs(){
   const root=$("#appContent");
-  root.insertAdjacentHTML("beforeend",\`
+  root.insertAdjacentHTML("beforeend",`
     <section class="learning-lab">
       <div class="section-head"><div><span class="pill">مختبر تفاعلي</span><h2 class="app-heading">لعبة تكوين المركبات الأيونية</h2><p>اختر أيوناً موجباً وأيوناً سالباً، ثم وازن الشحنات لتكوين مركب متعادل.</p></div></div>
       <div class="cards">
@@ -262,7 +262,7 @@ function renderStudentLabs(){
         <div class="practice-actions"><button type="button" class="btn primary" id="practiceNext" disabled>السؤال التالي</button><button type="button" class="btn ghost" id="practiceRestart">إعادة التدريب</button></div>
       </article>
     </section>
-  \`);
+  `);
   const cations=[...$("#cationOptions").querySelectorAll("[data-ion]")],anions=[...$("#anionOptions").querySelectorAll("[data-ion]")];
   let cation=cations[0],anion=anions[0];
   function selectIon(group,button){group.forEach(x=>x.classList.toggle("selected",x===button));}
