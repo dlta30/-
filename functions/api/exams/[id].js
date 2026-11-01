@@ -10,5 +10,9 @@ export async function onRequestGet({ params, env, ...context }) {
     return json({error:"الاختبار غير متاح في الوقت الحالي"},403);
   const questions=await env.DB.prepare("SELECT id,prompt,options_json,points,sort_order FROM questions WHERE exam_id=? ORDER BY sort_order").bind(params.id).all();
   const attempt=auth.user.role==="student"?await env.DB.prepare("SELECT id FROM attempts WHERE exam_id=? AND student_id=?").bind(params.id,auth.user.id).first():null;
+  if(auth.user.role==="student"&&!attempt){
+    await env.DB.prepare("INSERT OR IGNORE INTO exam_starts (id,exam_id,student_id,started_at) VALUES (?,?,?,datetime('now'))")
+      .bind(crypto.randomUUID(),params.id,auth.user.id).run();
+  }
   return json({exam,alreadyAttempted:!!attempt,questions:(questions.results||[]).map(q=>({id:q.id,prompt:q.prompt,options:JSON.parse(q.options_json),points:q.points}))});
 }
