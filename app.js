@@ -65,7 +65,7 @@ async function renderStudent(){
   const data=await api("/api/dashboard");
   const semesterExams=data.exams.filter(e=>(e.semester||"1")===currentSemester);
   const s={total:semesterExams.length,completed:semesterExams.filter(e=>e.state==="completed").length,missed:semesterExams.filter(e=>e.state==="missed").length};
-  $("#appContent").innerHTML='<div class="semester-switch card"><label for="semesterSelect">المقرر الدراسي</label><select id="semesterSelect"><option value="1" '+(currentSemester==="1"?"selected":"")+ '>الفصل الدراسي الأول · كيمياء 2-1</option><option value="2" '+(currentSemester==="2"?"selected":"")+ '>الفصل الدراسي الثاني · كيمياء 2-2</option></select></div>'+'<div class="cards app-stats"><article class="card"><div class="card-icon">📝</div><h3>'+s.total+'</h3><p>إجمالي الاختبارات المنشورة</p></article><article class="card"><div class="card-icon">✅</div><h3>'+s.completed+'</h3><p>اختبارات مكتملة</p></article><article class="card"><div class="card-icon">⚠️</div><h3>'+s.missed+'</h3><p>اختبارات فات موعدها</p></article></div><h2 class="app-heading">اختباراتك</h2><div class="testlist" id="studentExams"></div>';
+  $("#appContent").innerHTML='<div class="semester-switch card"><label for="semesterSelect">المقرر الدراسي</label><select id="semesterSelect"><option value="1" '+(currentSemester==="1"?"selected":"")+ '>الفصل الدراسي الأول · كيمياء 2-1</option><option value="2" '+(currentSemester==="2"?"selected":"")+ '>الفصل الدراسي الثاني · كيمياء 2-2</option></select></div>'+'<div class="cards app-stats"><article class="card"><div class="card-icon">📝</div><h3>'+s.total+'</h3><p>إجمالي الاختبارات المنشورة</p></article><article class="card"><div class="card-icon">✅</div><h3>'+s.completed+'</h3><p>اختبارات مكتملة</p></article><article class="card"><div class="card-icon">⚠️</div><h3>'+s.missed+'</h3><p>اختبارات فات موعدها</p></article></div><h2 class="app-heading" id="studentExamsHeading">اختباراتك</h2><div class="testlist" id="studentExams"></div>';
   $("#semesterSelect").onchange=()=>{currentSemester=$("#semesterSelect").value;renderStudent();};
   const list=$("#studentExams");
   if(!semesterExams.length){list.innerHTML='<article class="card"><h3>لا توجد اختبارات منشورة حالياً</h3><p>ستظهر اختبارات الأستاذ هنا فور نشرها.</p></article>';}
@@ -120,12 +120,35 @@ async function renderAdmin(){
     if(questions.some(q=>q.prompt.length<2||q.options.some(o=>!o)||!Number.isInteger(q.points)||q.points<1)){toast("أكمل جميع الأسئلة والخيارات والدرجات");return;}
     try{await api("/api/admin/exams",{method:"POST",body:JSON.stringify({title:fd.get("title"),description:fd.get("description"),semester:fd.get("semester"),durationMinutes:Number(fd.get("duration")),opensAt:fd.get("opens")?new Date(fd.get("opens")).toISOString():null,closesAt:fd.get("closes")?new Date(fd.get("closes")).toISOString():null,questions,publish:ev.submitter?.value==="true"})});toast(ev.submitter?.value==="true"?"تم نشر الاختبار للطلاب":"تم حفظ الاختبار كمسودة");await renderAdmin();}catch(e){toast(e.message);}});
 }
+
+function showGooglePasswordSetup(){
+  const layer=document.createElement("div");
+  layer.className="modal show";
+  layer.id="googlePasswordSetup";
+  layer.innerHTML='<div class="dialog"><div class="eyebrow">إكمال إنشاء الحساب</div><h2 style="margin-top:16px">أنشئ كلمة مرور لحسابك</h2><p>تم تسجيل بريدك باستخدام Google. اختر كلمة مرور لتتمكن من الدخول لاحقاً بالبريد وكلمة المرور دون الحاجة إلى Google.</p><form id="googlePasswordForm"><div class="field"><label>كلمة المرور الجديدة</label><input id="googleNewPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="8 أحرف على الأقل"></div><div class="field"><label>تأكيد كلمة المرور</label><input id="googleConfirmPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="أعد كتابة كلمة المرور"></div><button class="btn primary" type="submit">حفظ كلمة المرور والدخول</button></form><div class="notice">استخدم كلمة مرور لا تشاركها مع أي شخص.</div></div>';
+  document.body.append(layer);
+  $("#googlePasswordForm").addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    const password=$("#googleNewPassword").value,confirmation=$("#googleConfirmPassword").value;
+    if(password!==confirmation){toast("كلمتا المرور غير متطابقتين");return;}
+    const button=ev.currentTarget.querySelector("button[type=submit]");button.disabled=true;button.textContent="جارٍ الحفظ...";
+    try{await api("/api/auth/set-password",{method:"POST",body:JSON.stringify({password,confirmation})});layer.remove();const url=new URL(location.href);url.searchParams.delete("google_setup");history.replaceState({},"",url.pathname+url.search+url.hash);toast("تم حفظ كلمة المرور، تقدر تدخل بها لاحقاً");}
+    catch(e){toast(e.message);button.disabled=false;button.textContent="حفظ كلمة المرور والدخول";}
+  });
+}
+
 async function boot(){
   ensureApp();
-  try{const data=await api("/api/auth/me");if(data.user){currentUser=data.user;await showApp();}}catch(e){console.error(e);}
+  try{const data=await api("/api/auth/me");if(data.user){currentUser=data.user;await showApp();if(new URLSearchParams(location.search).get("google_setup")==="1")showGooglePasswordSetup();}}catch(e){console.error(e);}
 }
 document.addEventListener("DOMContentLoaded",()=>{
   $("#auth").addEventListener("click",e=>{if(e.target.id==="auth")closeAuth();});
+  document.querySelectorAll(".nav a").forEach(link=>link.addEventListener("click",ev=>{
+    if(!currentUser)return;
+    ev.preventDefault();
+    const target=link.getAttribute("href")==="#tests"?"#studentExamsHeading":link.getAttribute("href")==="#features"?"#learningSection":"#studentApp";
+    const node=$(target)||$("#studentApp");node.scrollIntoView({behavior:"smooth",block:"start"});
+  }));
   boot();
   const googleButton = document.createElement("button");
   googleButton.type = "button";
@@ -159,7 +182,7 @@ async function renderLearningStudent(){
  const units=id=>(d.units.find(x=>x.id===id)||{}).title||"محتوى عام";
  const progressCount=semesterLessons.filter(x=>(d.completedLessons||[]).includes(x.id)).length,progressPct=semesterLessons.length?Math.round(progressCount/semesterLessons.length*100):0;
  root.insertAdjacentHTML("beforeend",'<article class="card learning-progress"><div><span class="pill">إنجازك الدراسي</span><h3>'+progressPct+'% مكتمل</h3><p>'+progressCount+' من '+d.lessons.length+' درس مكتمل</p></div><div class="progress-track"><span style="width:'+progressPct+'%"></span></div></article>');
- root.insertAdjacentHTML("beforeend",'<h2 class="app-heading">الدروس والوحدات</h2><div class="cards" id="lessonCards"></div><h2 class="app-heading">التجارب والأنشطة</h2><div class="cards" id="experimentCards"></div><h2 class="app-heading">مصادر التعلم</h2><div class="testlist" id="resourceCards"></div><h2 class="app-heading">إعلانات الأستاذ</h2><div class="testlist" id="announcementCards"></div>');
+ root.insertAdjacentHTML("beforeend",'<h2 class="app-heading" id="learningSection">الدروس والوحدات</h2><div class="cards" id="lessonCards"></div><h2 class="app-heading">التجارب والأنشطة</h2><div class="cards" id="experimentCards"></div><h2 class="app-heading">مصادر التعلم</h2><div class="testlist" id="resourceCards"></div><h2 class="app-heading">إعلانات الأستاذ</h2><div class="testlist" id="announcementCards"></div>');
  root.insertAdjacentHTML("beforeend",'<h2 class="app-heading">مختبر الكيمياء التفاعلي</h2><div class="cards"><article class="card"><div class="card-icon">🧪</div><h3>محاكاة مقياس الرقم الهيدروجيني pH</h3><p>حرّك المؤشر لاستكشاف الفرق بين الحمضي والمتعادل والقاعدي. محاكاة تعليمية وليست قياساً لمادة حقيقية.</p><div class="field"><label>قيمة pH: <b id="phValue">7.0</b></label><input id="phSlider" type="range" min="0" max="14" step="0.5" value="7"></div><div id="phResult" class="ph-result"><b>متعادل</b><span>pH = 7</span></div><div class="ph-scale"><span>حمضي</span><span>متعادل</span><span>قاعدي</span></div></article><article class="card"><div class="card-icon">⚛️</div><h3>مستكشف العناصر</h3><p>ابحث في أول 20 عنصراً من الجدول الدوري.</p><div class="field"><label>اسم العنصر أو رمزه</label><input id="elementSearch" placeholder="مثال: O أو الأكسجين"></div><div id="elementGrid" class="element-grid"></div></article></div>');
  const slider=$("#phSlider"),phOut=$("#phResult");
  const updatePh=()=>{const v=Number(slider.value),kind=v<7?"حمضي":v>7?"قاعدي":"متعادل",color=v<7?"#d85b69":v>7?"#568bd1":"#69a98a";$("#phValue").textContent=v.toFixed(1);phOut.innerHTML="<b>"+kind+"</b><span>قيمة pH = "+v.toFixed(1)+"</span>";phOut.style.borderColor=color;phOut.style.background=color+"20";};slider.oninput=updatePh;
