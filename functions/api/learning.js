@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
   const admin = auth.user.role === "admin";
   const published = admin ? "" : " WHERE published=1";
   const [units, lessons, experiments, resources, announcements] = await Promise.all([
-    db.prepare("SELECT * FROM learning_units" + published + " ORDER BY sort_order,title").all(),
+    db.prepare("SELECT * FROM learning_units" + published + " ORDER BY semester,sort_order,title").all(),
     db.prepare("SELECT * FROM lessons" + published + " ORDER BY sort_order,title").all(),
     db.prepare("SELECT * FROM experiments" + published + " ORDER BY created_at DESC").all(),
     db.prepare("SELECT * FROM resources" + published + " ORDER BY created_at DESC").all(),
@@ -52,8 +52,8 @@ export async function onRequestPost(context) {
     if (type === "unit") {
       const title = clean(body.title,160);
       if (title.length < 3) return json({error:"اكتب عنوان الوحدة"},400);
-      await db.prepare("INSERT INTO learning_units (id,title,description,sort_order,published,created_by) VALUES (?,?,?,?,?,?)")
-        .bind(id,title,clean(body.description,1000),Number(body.sortOrder)||0,published,admin.user.id).run();
+      await db.prepare("INSERT INTO learning_units (id,title,description,sort_order,published,created_by,semester) VALUES (?,?,?,?,?,?,?)")
+        .bind(id,title,clean(body.description,1000),Number(body.sortOrder)||0,published,admin.user.id,body.semester==="2"?"2":"1").run();
     } else if (type === "lesson") {
       const title = clean(body.title,160), content = clean(body.content,20000);
       if (title.length < 3 || content.length < 10) return json({error:"عنوان الدرس ومحتواه مطلوبان"},400);
