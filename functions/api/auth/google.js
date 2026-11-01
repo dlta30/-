@@ -1,8 +1,9 @@
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const clientId = env.GOOGLE_CLIENT_ID;
-  if (!clientId || !env.GOOGLE_CLIENT_SECRET) {
-    return new Response("Google sign-in is not configured", { status: 503 });
+  const missing = [!clientId ? "GOOGLE_CLIENT_ID" : null, !env.GOOGLE_CLIENT_SECRET ? "GOOGLE_CLIENT_SECRET" : null].filter(Boolean);
+  if (missing.length) {
+    return new Response("Google sign-in configuration missing: " + missing.join(", "), { status: 503 });
   }
   const redirectUri = url.origin + "/api/auth/google/callback";
   const state = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, "0")).join("");
