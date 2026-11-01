@@ -13,7 +13,7 @@ function fail(request, reason) {
     "set-cookie": "google_oauth_state=; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=0"
   }});
 }
-export async function onRequestGet({ request, env }) {
+async function handleGoogleCallback({ request, env }) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -62,4 +62,13 @@ export async function onRequestGet({ request, env }) {
   const headers = new Headers({ location: new URL("/", request.url).toString(), "set-cookie": session });
   headers.append("set-cookie", "google_oauth_state=; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
   return new Response(null, { status: 302, headers });
+}
+
+export async function onRequestGet(context) {
+  try {
+    return await handleGoogleCallback(context);
+  } catch (error) {
+    console.error("Google OAuth callback failed:", error?.stack || error);
+    return fail(context.request, "server");
+  }
 }
