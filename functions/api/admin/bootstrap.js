@@ -10,7 +10,7 @@ export async function onRequestPost({ request, env }) {
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin'").first();
   if (Number(count?.n || 0) > 0) return json({ error: "تم إعداد حساب المدير مسبقاً" }, 409);
   const email = "auvb2010@outlook.com";
-  const name = "الأستاذ حسين عباس";
+  const name = "الأستاذ حسين العباس";
   const password = String(body?.password || "");
   if (password.length < 12 || password.length > 128) return json({ error: "كلمة مرور المدير يجب أن تكون 12 حرفاً على الأقل" }, 400);
   const existing = await env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first();
