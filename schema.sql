@@ -45,6 +45,14 @@ CREATE TABLE IF NOT EXISTS questions (
 );
 CREATE INDEX IF NOT EXISTS idx_questions_exam ON questions(exam_id, sort_order);
 
+CREATE TABLE IF NOT EXISTS exam_starts (
+  id TEXT PRIMARY KEY,
+  exam_id TEXT NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(exam_id, student_id)
+);
+
 CREATE TABLE IF NOT EXISTS attempts (
   id TEXT PRIMARY KEY,
   exam_id TEXT NOT NULL REFERENCES exams(id),
