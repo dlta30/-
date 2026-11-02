@@ -33,7 +33,7 @@ async function renderDigitalBook(){
    if(lesson){
     let content=String(lesson.content||"");
     if(currentBookVersion==="unsolved"){
-     content=content.replace(/\\nالإجابة النموذجية\\n[\\s\\S]*?(?=\\nمراجعة سريعة\\n|$)/,"");
+     const answerStart=content.indexOf("الإجابة النموذجية");if(answerStart>=0){const reviewStart=content.indexOf("مراجعة سريعة",answerStart);content=content.slice(0,answerStart)+(reviewStart>=0?content.slice(reviewStart):"");}
     }
     root.innerHTML='<div class="section-head"><div><span class="pill">كتاب الكيمياء الرقمي · '+versionLabel+'</span><h2>'+esc(lesson.title)+'</h2><p>محتوى تعليمي أصلي لمنصة الأستاذ حسين العباس.</p></div></div>'+toggle+'<button class="btn ghost small" id="backDigitalBook" style="margin:12px 0">← فهرس الكتاب</button><article class="card"><div class="lesson-content">'+esc(content)+'</div>'+(currentBookVersion==="unsolved"?'<div class="field" style="margin-top:22px"><label>مساحة تدوين الحل</label><div class="notice">اكتب إجابتك في دفترك أو على ورقة خارجية.</div></div>':'<div class="notice">هذه النسخة تعرض الإجابات النموذجية المتاحة للمراجعة والتعلم.</div>')+'</article>';
     $("#backDigitalBook").onclick=()=>{currentBookLessonId=null;renderDigitalBook();};
