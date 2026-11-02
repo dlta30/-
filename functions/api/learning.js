@@ -8,6 +8,9 @@ export async function onRequestGet(context) {
   const auth = await requireUser(context);
   if (auth.response) return auth.response;
   const db = context.env.DB;
+  // Add video support safely for existing databases.
+  const lessonColumns = await db.prepare("PRAGMA table_info(lessons)").all();
+  if (!(lessonColumns.results || []).some(x => x.name === "video_url")) await db.prepare("ALTER TABLE lessons ADD COLUMN video_url TEXT NOT NULL DEFAULT ''").run();
   const admin = auth.user.role === "admin";
   const published = admin ? "" : " WHERE published=1";
   const [units, lessons, experiments, resources, announcements] = await Promise.all([
@@ -36,8 +39,12 @@ export async function onRequestPost(context) {
   if (type === "progress") {
     if (auth.user.role !== "student") return json({error:"هذا الإجراء مخصص للطلاب"},403);
     const lessonId = clean(body.lessonId, 80);
-    const lesson = await context.env.DB.prepare("SELECT id FROM lessons WHERE id=? AND published=1").bind(lessonId).first();
+    const lesson = await context.env.DB.prepare("SELECT id,video_url FROM lessons WHERE id=? AND published=1").bind(lessonId).first();
     if (!lesson) return json({error:"الدرس غير متاح"},404);
+    if (lesson.video_url) {
+      const watched = Number(body.watchedSeconds || 0), duration = Number(body.durationSeconds || 0);
+      if (!Number.isFinite(watched) || !Number.isFinite(duration) || duration < 1 || watched < duration * 0.9) return json({error:"أكمل مشاهدة 90٪ على الأقل من المقطع قبل تسجيل الدرس كمكتمل."},400);
+    }
     await context.env.DB.prepare("INSERT OR IGNORE INTO student_progress (id,student_id,lesson_id) VALUES (?,?,?)")
       .bind(newId(), auth.user.id, lessonId).run();
     return json({ok:true});
@@ -55,10 +62,10 @@ export async function onRequestPost(context) {
       await db.prepare("INSERT INTO learning_units (id,title,description,sort_order,published,created_by,semester) VALUES (?,?,?,?,?,?,?)")
         .bind(id,title,clean(body.description,1000),Number(body.sortOrder)||0,published,admin.user.id,body.semester==="2"?"2":"1").run();
     } else if (type === "lesson") {
-      const title = clean(body.title,160), content = clean(body.content,20000);
+      const title = clean(body.title,160), content = clean(body.content,20000), videoUrl = clean(body.videoUrl,1500);
       if (title.length < 3 || content.length < 10) return json({error:"عنوان الدرس ومحتواه مطلوبان"},400);
-      await db.prepare("INSERT INTO lessons (id,unit_id,title,summary,content,sort_order,published,created_by) VALUES (?,?,?,?,?,?,?,?)")
-        .bind(id,clean(body.unitId,80)||null,title,clean(body.summary,1000),content,Number(body.sortOrder)||0,published,admin.user.id).run();
+      await db.prepare("INSERT INTO lessons (id,unit_id,title,summary,content,video_url,sort_order,published,created_by) VALUES (?,?,?,?,?,?,?,?,?)")
+        .bind(id,clean(body.unitId,80)||null,title,clean(body.summary,1000),content,videoUrl,Number(body.sortOrder)||0,published,admin.user.id).run();
     } else if (type === "experiment") {
       const title = clean(body.title,160), materials = Array.isArray(body.materials)?body.materials.slice(0,30):[], steps = Array.isArray(body.steps)?body.steps.slice(0,30):[];
       if (title.length < 3 || steps.length < 1) return json({error:"عنوان التجربة وخطوة واحدة على الأقل مطلوبة"},400);
