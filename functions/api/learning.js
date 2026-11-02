@@ -1,7 +1,7 @@
 import { json, readJson, newId } from "../_lib/http.js";
 import { requireUser, requireAdmin } from "../_lib/auth.js";
 
-const TYPES = new Set(["unit", "lesson", "experiment", "resource", "announcement"]);
+const TYPES = new Set(["unit", "lesson", "lesson-video", "experiment", "resource", "announcement"]);
 const clean = (v, max = 5000) => String(v ?? "").trim().slice(0, max);
 
 export async function onRequestGet(context) {
@@ -53,7 +53,6 @@ export async function onRequestPost(context) {
     const trustedDuration = Number(lesson.video_duration_seconds || 0);
     if (trustedDuration < 1 || Math.abs(duration-trustedDuration) > 2) return json({error:"مدة الفيديو لا تطابق المدة التي حددها الأستاذ."},400);
     if (position > trustedDuration + 2) return json({error:"موضع المشاهدة غير صالح"},400);
-    await db.prepare("CREATE TABLE IF NOT EXISTS lesson_video_progress (student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE, watched_seconds REAL NOT NULL DEFAULT 0, duration_seconds REAL NOT NULL DEFAULT 0, last_position REAL NOT NULL DEFAULT 0, last_heartbeat_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(student_id,lesson_id))").run();
     const now = Math.floor(Date.now()/1000);
     const previous = await db.prepare("SELECT watched_seconds,duration_seconds,last_position,last_heartbeat_at FROM lesson_video_progress WHERE student_id=? AND lesson_id=?").bind(auth.user.id,lessonId).first();
     let watched = Number(previous?.watched_seconds || 0);
@@ -72,7 +71,6 @@ export async function onRequestPost(context) {
     const lessonId = clean(body.lessonId, 80), lesson = await db.prepare("SELECT id,video_url FROM lessons WHERE id=? AND published=1").bind(lessonId).first();
     if (!lesson) return json({error:"الدرس غير متاح"},404);
     if (!String(lesson.video_url || "").trim()) return json({error:"هذا الدرس يحتاج إلى فيديو من الأستاذ قبل تسجيل إكماله."},400);
-    await db.prepare("CREATE TABLE IF NOT EXISTS lesson_video_progress (student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE, watched_seconds REAL NOT NULL DEFAULT 0, duration_seconds REAL NOT NULL DEFAULT 0, last_position REAL NOT NULL DEFAULT 0, last_heartbeat_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(student_id,lesson_id))").run();
     const watch = await db.prepare("SELECT watched_seconds,duration_seconds FROM lesson_video_progress WHERE student_id=? AND lesson_id=?").bind(auth.user.id,lessonId).first();
     if (!watch || Number(watch.duration_seconds) < 1 || Number(watch.watched_seconds) < Number(watch.duration_seconds)*0.9) return json({error:"لا يمكنك إكمال الدرس قبل مشاهدة 90٪ على الأقل من الفيديو."},400);
     await db.prepare("INSERT OR IGNORE INTO student_progress (id,student_id,lesson_id) VALUES (?,?,?)").bind(newId(),auth.user.id,lessonId).run();
@@ -96,6 +94,14 @@ export async function onRequestPost(context) {
       if (!Number.isInteger(videoDuration) || videoDuration < 1 || videoDuration > 86400) return json({error:"أدخل مدة الفيديو بالثواني (من ثانية إلى 24 ساعة)."},400);
       await db.prepare("INSERT INTO lessons (id,unit_id,title,summary,content,video_url,video_duration_seconds,sort_order,published,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)")
         .bind(id,clean(body.unitId,80)||null,title,clean(body.summary,1000),content,videoUrl,videoDuration,Number(body.sortOrder)||0,published,admin.user.id).run();
+    } else if (type === "lesson-video") {
+      const lessonId = clean(body.lessonId,80), videoUrl = clean(body.videoUrl,1500), videoDuration = Number(body.videoDurationSeconds);
+      if (!lessonId || !/^https:\/\//i.test(videoUrl) || !Number.isInteger(videoDuration) || videoDuration < 1 || videoDuration > 86400) return json({error:"اختر درساً موجوداً وأدخل رابط فيديو HTTPS ومدته بالثواني."},400);
+      const existing = await db.prepare("SELECT id FROM lessons WHERE id=?").bind(lessonId).first();
+      if (!existing) return json({error:"الدرس المحدد غير موجود"},404);
+      await db.prepare("UPDATE lessons SET video_url=?,video_duration_seconds=? WHERE id=?").bind(videoUrl,videoDuration,lessonId).run();
+      await db.prepare("DELETE FROM student_progress WHERE lesson_id=?").bind(lessonId).run();
+      await db.prepare("DELETE FROM lesson_video_progress WHERE lesson_id=?").bind(lessonId).run();
     } else if (type === "experiment") {
       const title = clean(body.title,160), materials = Array.isArray(body.materials)?body.materials.slice(0,30):[], steps = Array.isArray(body.steps)?body.steps.slice(0,30):[];
       if (title.length < 3 || steps.length < 1) return json({error:"عنوان التجربة وخطوة واحدة على الأقل مطلوبة"},400);
