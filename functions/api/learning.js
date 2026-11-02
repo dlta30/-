@@ -4,15 +4,24 @@ import { requireUser, requireAdmin } from "../_lib/auth.js";
 const TYPES = new Set(["unit", "lesson", "lesson-video", "experiment", "resource", "announcement"]);
 const clean = (v, max = 5000) => String(v ?? "").trim().slice(0, max);
 
+async function ensureLessonColumn(db, name, sql) {
+  const columns = await db.prepare("PRAGMA table_info(lessons)").all();
+  if ((columns.results || []).some(x => x.name === name)) return;
+  try {
+    await db.prepare(sql).run();
+  } catch (error) {
+    const refreshed = await db.prepare("PRAGMA table_info(lessons)").all();
+    if (!(refreshed.results || []).some(x => x.name === name)) throw error;
+  }
+}
+
 export async function onRequestGet(context) {
   const auth = await requireUser(context);
   if (auth.response) return auth.response;
   const db = context.env.DB;
   // Add video support safely for existing databases.
-  const lessonColumns = await db.prepare("PRAGMA table_info(lessons)").all();
-  const existingLessonColumns = lessonColumns.results || [];
-  if (!existingLessonColumns.some(x => x.name === "video_url")) await db.prepare("ALTER TABLE lessons ADD COLUMN video_url TEXT NOT NULL DEFAULT ''").run();
-  if (!existingLessonColumns.some(x => x.name === "video_duration_seconds")) await db.prepare("ALTER TABLE lessons ADD COLUMN video_duration_seconds INTEGER NOT NULL DEFAULT 0").run();
+  await ensureLessonColumn(db, "video_url", "ALTER TABLE lessons ADD COLUMN video_url TEXT NOT NULL DEFAULT ''");
+  await ensureLessonColumn(db, "video_duration_seconds", "ALTER TABLE lessons ADD COLUMN video_duration_seconds INTEGER NOT NULL DEFAULT 0");
   await db.prepare("CREATE TABLE IF NOT EXISTS lesson_video_progress (student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE, watched_seconds REAL NOT NULL DEFAULT 0, duration_seconds REAL NOT NULL DEFAULT 0, last_position REAL NOT NULL DEFAULT 0, last_heartbeat_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(student_id,lesson_id))").run();
   const admin = auth.user.role === "admin";
   const published = admin ? "" : " WHERE published=1";
