@@ -27,12 +27,12 @@ async function openLesson(id){
  $("#backLessons").onclick=renderLessons;if(!hasVideo||done)return;
  const video=$("#lessonVideo"),status=$("#videoProgress"),bar=$("#videoProgressBar"),button=$("#markDone");
  let timer=null,busy=false,canComplete=initialPercent>=90;
- const heartbeat=async()=>{if(busy||video.paused||video.ended||!Number.isFinite(video.duration)||video.duration<1)return;busy=true;try{
+ const heartbeat=async(allowPaused=false)=>{if(busy||((video.paused||video.ended)&&!allowPaused)||!Number.isFinite(video.duration)||video.duration<1)return;busy=true;try{
   const d=await api("/api/learning",{method:"POST",body:JSON.stringify({type:"video-heartbeat",lessonId:id,position:video.currentTime,duration:video.duration})});
   canComplete=!!d.canComplete;status.textContent="نسبة المشاهدة المسجلة: "+d.percent+"٪ — "+(canComplete?"يمكنك الآن إكمال الدرس.":"يلزم مشاهدة 90٪ على الأقل.");bar.style.width=d.percent+"%";button.disabled=!canComplete;button.textContent=canComplete?"تحديد الدرس كمكتمل ✓":"شاهد 90٪ من الفيديو لتفعيل الإكمال";
   const item=(lessonCache.videoProgress||[]).find(x=>x.lessonId===id);if(item){item.percent=d.percent;item.watchedSeconds=d.watchedSeconds;}else{lessonCache.videoProgress=[...(lessonCache.videoProgress||[]),{lessonId:id,percent:d.percent,watchedSeconds:d.watchedSeconds,durationSeconds:Math.floor(video.duration)}];}
  }catch(e){status.textContent=e.message;}finally{busy=false;}};
- const start=()=>{if(timer)clearInterval(timer);heartbeat();timer=setInterval(heartbeat,10000);},stop=()=>{if(timer){clearInterval(timer);timer=null;}};
+ const start=()=>{if(timer)clearInterval(timer);heartbeat();timer=setInterval(heartbeat,10000);},stop=()=>{if(timer){clearInterval(timer);timer=null;}heartbeat(true);};
  video.addEventListener("play",start);video.addEventListener("pause",stop);video.addEventListener("ended",stop);
  button.onclick=async()=>{if(!canComplete)return;button.disabled=true;button.textContent="جارٍ تسجيل الإكمال...";try{await api("/api/learning",{method:"POST",body:JSON.stringify({type:"progress",lessonId:id})});toast("أحسنت! تم تسجيل إكمال الدرس");await renderStudent();document.querySelector('[data-tab="lessons"]').click();}catch(e){toast(e.message);button.disabled=false;button.textContent="حاول تسجيل الإكمال مرة أخرى";}};
 }
