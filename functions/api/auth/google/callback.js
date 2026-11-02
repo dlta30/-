@@ -86,9 +86,12 @@ async function handleGoogleCallback({ request, env }, markStage) {
   markStage("session_create");
   const session = await createSession(env.DB, user.id);
   const destination = new URL("/", request.url);
+  const examReturn = cookie(request, "google_exam_return");
+  if (examReturn && /^[a-zA-Z0-9_-]{1,100}$/.test(examReturn)) destination.searchParams.set("exam", examReturn);
   if (needsPasswordSetup) destination.searchParams.set("google_setup", "1");
   const headers = new Headers({ location: destination.toString(), "set-cookie": session });
   headers.append("set-cookie", "google_oauth_state=; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
+  headers.append("set-cookie", "google_exam_return=; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
   return new Response(null, { status: 302, headers });
 }
 
