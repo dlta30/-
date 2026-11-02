@@ -97,15 +97,15 @@ export async function onRequestPost(context) {
       await db.prepare("INSERT INTO learning_units (id,title,description,sort_order,published,created_by,semester) VALUES (?,?,?,?,?,?,?)")
         .bind(id,title,clean(body.description,1000),Number(body.sortOrder)||0,published,admin.user.id,body.semester==="2"?"2":"1").run();
     } else if (type === "lesson") {
-      const title = clean(body.title,160), content = clean(body.content,20000), videoUrl = clean(body.videoUrl,1500), videoDuration = Number(body.videoDurationSeconds);
+      const title = clean(body.title,160), content = clean(body.content,20000), videoUrl = clean(body.videoUrl,1500), durationMinutes = Number(body.videoDurationMinutes), videoDuration = Math.round(durationMinutes * 60);
       if (title.length < 3 || content.length < 10) return json({error:"عنوان الدرس ومحتواه مطلوبان"},400);
       if (!/^https:\/\//i.test(videoUrl)) return json({error:"أضف رابط فيديو مباشر وآمن (HTTPS) للدرس قبل نشره."},400);
-      if (!Number.isInteger(videoDuration) || videoDuration < 1 || videoDuration > 86400) return json({error:"أدخل مدة الفيديو بالثواني (من ثانية إلى 24 ساعة)."},400);
+      if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440 || !Number.isInteger(videoDuration) || videoDuration < 1) return json({error:"أدخل مدة فيديو صحيحة بالدقائق (أكثر من صفر وحتى 1440 دقيقة)."},400);
       await db.prepare("INSERT INTO lessons (id,unit_id,title,summary,content,video_url,video_duration_seconds,sort_order,published,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)")
         .bind(id,clean(body.unitId,80)||null,title,clean(body.summary,1000),content,videoUrl,videoDuration,Number(body.sortOrder)||0,published,admin.user.id).run();
     } else if (type === "lesson-video") {
-      const lessonId = clean(body.lessonId,80), videoUrl = clean(body.videoUrl,1500), videoDuration = Number(body.videoDurationSeconds);
-      if (!lessonId || !/^https:\/\//i.test(videoUrl) || !Number.isInteger(videoDuration) || videoDuration < 1 || videoDuration > 86400) return json({error:"اختر درساً موجوداً وأدخل رابط فيديو HTTPS ومدته بالثواني."},400);
+      const lessonId = clean(body.lessonId,80), videoUrl = clean(body.videoUrl,1500), durationMinutes = Number(body.videoDurationMinutes), videoDuration = Math.round(durationMinutes * 60);
+      if (!lessonId || !/^https:\/\//i.test(videoUrl) || !Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440 || !Number.isInteger(videoDuration) || videoDuration < 1) return json({error:"اختر درساً موجوداً وأدخل رابط فيديو HTTPS ومدته بالدقائق."},400);
       const existing = await db.prepare("SELECT id FROM lessons WHERE id=?").bind(lessonId).first();
       if (!existing) return json({error:"الدرس المحدد غير موجود"},404);
       await db.prepare("UPDATE lessons SET video_url=?,video_duration_seconds=? WHERE id=?").bind(videoUrl,videoDuration,lessonId).run();
