@@ -13,8 +13,8 @@ export async function onRequestGet({ request, env }) {
     client_id: clientId, redirect_uri: redirectUri, response_type: "code",
     scope: "openid email profile", state, prompt: "select_account"
   });
-  return new Response(null, { status: 302, headers: {
-    location: "https://accounts.google.com/o/oauth2/v2/auth?" + params.toString(),
-    "set-cookie": "google_oauth_state=" + state + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600" + returnCookie + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600"
-  }});
+  const headers = new Headers({ location: "https://accounts.google.com/o/oauth2/v2/auth?" + params.toString() });
+  headers.append("set-cookie", "google_oauth_state=" + state + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600");
+  if (returnCookie) headers.append("set-cookie", returnCookie.slice(2) + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600");
+  return new Response(null, { status: 302, headers });
 }
