@@ -1,5 +1,6 @@
-import { json } from "../../_lib/http.js";
+import { json, readJson } from "../../_lib/http.js";
 import { requireAdmin } from "../../_lib/auth.js";
+
 export async function onRequestGet(context) {
   const auth=await requireAdmin(context);if(auth.response)return auth.response;
   const rows=await context.env.DB.prepare(`
@@ -11,4 +12,16 @@ export async function onRequestGet(context) {
     WHERE u.role='student' GROUP BY u.id ORDER BY u.created_at DESC
   `).all();
   return json({students:rows.results||[]});
+}
+
+export async function onRequestPatch(context) {
+  const auth=await requireAdmin(context);if(auth.response)return auth.response;
+  const body=await readJson(context.request);
+  const id=String(body?.id||"").trim();
+  if(!id || typeof body?.active!=="boolean") return json({error:"بيانات تحديث حساب الطالب غير مكتملة"},400);
+  const student=await context.env.DB.prepare("SELECT id FROM users WHERE id=? AND role='student'").bind(id).first();
+  if(!student) return json({error:"حساب الطالب غير موجود"},404);
+  await context.env.DB.prepare("UPDATE users SET active=? WHERE id=? AND role='student'").bind(body.active?1:0,id).run();
+  if(!body.active) await context.env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(id).run();
+  return json({ok:true,active:body.active,message:body.active?"تم تفعيل حساب الطالب":"تم إيقاف الحساب وإلغاء جلساته"});
 }
