@@ -73,7 +73,7 @@ export async function onRequestPost(context) {
   try {
     let result;
     if (image) {
-      result = await ai.run("@cf/meta/llama-3.2-11b-vision-instruct", { prompt, image: image.data, max_tokens: 1400 });
+      result = await ai.run("@cf/meta/llama-3.2-11b-vision-instruct", { prompt, image: image.data, max_tokens: mode === "exam" ? 4096 : 1400 });
     } else {
       result = await ai.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
         messages: [
@@ -81,7 +81,7 @@ export async function onRequestPost(context) {
           ...history,
           { role: "user", content: message }
         ],
-        max_tokens: 1400,
+        max_tokens: mode === "exam" ? 4096 : 1400,
         temperature: 0.35
       });
     }
