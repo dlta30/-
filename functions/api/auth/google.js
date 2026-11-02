@@ -7,12 +7,14 @@ export async function onRequestGet({ request, env }) {
   }
   const redirectUri = url.origin + "/api/auth/google/callback";
   const state = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, "0")).join("");
+  const examId = url.searchParams.get("exam") || "";
+  const returnCookie = examId && /^[a-zA-Z0-9_-]{1,100}$/.test(examId) ? "; google_exam_return=" + encodeURIComponent(examId) : "";
   const params = new URLSearchParams({
     client_id: clientId, redirect_uri: redirectUri, response_type: "code",
     scope: "openid email profile", state, prompt: "select_account"
   });
   return new Response(null, { status: 302, headers: {
     location: "https://accounts.google.com/o/oauth2/v2/auth?" + params.toString(),
-    "set-cookie": "google_oauth_state=" + state + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600"
+    "set-cookie": "google_oauth_state=" + state + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600" + returnCookie + "; Path=/api/auth/google; HttpOnly; Secure; SameSite=Lax; Max-Age=600"
   }});
 }
