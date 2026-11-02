@@ -155,6 +155,7 @@ export async function onRequestPost(context) {
     for (const old of rows) {
       if (Number(old.sort_order) > term.chapters.length) {
         await db.prepare("UPDATE learning_units SET published=0 WHERE id=?").bind(old.id).run();
+        await db.prepare("UPDATE lessons SET published=0 WHERE unit_id=?").bind(old.id).run();
         hiddenOldUnits++;
       }
     }
