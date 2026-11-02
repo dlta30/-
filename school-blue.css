@@ -1,0 +1,26 @@
+:root{--bg:#f3f7fc;--panel:#fff;--panel2:#edf4fc;--line:#d9e4f1;--text:#172b45;--muted:#63758c;--gold:#2563a6;--gold2:#174b83;--red:#c64b55;--green:#16865b;--shadow:0 18px 48px #183b6412}
+body{background:linear-gradient(180deg,#f8fbff,#eef4fb 55%,#f7faff);color:var(--text)}
+.topbar{background:#ffffffed;border-bottom:1px solid #dce7f3;box-shadow:0 5px 24px #24466b0a}
+.mark{background:linear-gradient(145deg,#2e78bd,#174b83);color:white;box-shadow:0 8px 24px #2867a326}
+.navlinks{color:#536982}.navlinks a:hover{color:#1d65a8}
+.btn{background:#f0f5fb;border-color:#d6e2ef;color:#1d3858}.btn:hover{border-color:#6ba2d5}
+.btn.primary{background:linear-gradient(135deg,#2879bd,#15558f);color:#fff;box-shadow:0 8px 20px #1e609c20}
+.btn.ghost{background:#fff}
+.hero-art{border-color:#c8ddf2;background:radial-gradient(circle at 50% 45%,#d8eafa,#edf5fd 58%,#fff);box-shadow:0 20px 55px #2b60901a}
+.orb{border-color:#7daed9;box-shadow:0 0 80px #4d8dc222,inset 0 0 50px #4d8dc214}
+.orb:before,.orb:after{border-color:#8eb7dc}.orb strong{color:#195b96}
+.float{border-color:#c6dced;background:#ffffffed;color:#1e5e95;box-shadow:0 8px 25px #24466b12}
+.card{background:#fff;border-color:#dce7f2;box-shadow:0 12px 32px #23476b0b}
+.iconbox{background:#e8f2fc;color:#236aa7}.pill{border-color:#c8ddef;background:#f1f7fd;color:#245f91}
+.eyebrow{color:#236ba8}.hero h1 span{color:#236ba8}
+.hero p,.card p,.section-head p{color:#63758c}
+.dialog{background:#fff;border-color:#dce7f2}.field label{color:#435b75}
+.field input,.field select,.field textarea{background:#f8fbff;border-color:#d6e2ef;color:#172b45}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#4e91c8}
+.tab.active{background:#236ba8;color:white;border-color:#236ba8}
+.progress{background:#e4edf6}.progress span{background:linear-gradient(90deg,#3988c8,#14558f)}
+.lesson-content{color:#344d68}.answer{border-color:#dce7f2;background:#f8fbff}
+th{color:#1f5f98}.empty{border-color:#cbdbea;color:#687d94}
+.toast{background:#fff;color:#1b3551;border-color:#6da3d1;box-shadow:0 8px 30px #23476b18}
+.stat b{color:#236ba8}
+@media(max-width:520px){.topbar .nav{height:68px}}
