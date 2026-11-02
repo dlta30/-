@@ -4,7 +4,7 @@ import { requireAdmin } from "../../_lib/auth.js";
 export async function onRequestGet(context) {
   const auth=await requireAdmin(context);if(auth.response)return auth.response;
   const rows=await context.env.DB.prepare(`
-    SELECT u.id,u.name,u.email,u.active,u.created_at,
+    SELECT u.id,u.name,u.email,u.active,u.created_at,u.class_name,
       COUNT(a.id) AS attempts,
       COALESCE(SUM(a.score),0) AS earned_points,
       COALESCE(SUM(a.total_points),0) AS total_points
