@@ -22,6 +22,10 @@ export async function onRequestPost(context) {
 
   const message = String(body?.message || "").trim().slice(0, MAX_MESSAGE);
   const mode = String(body?.mode || "chat");
+  const teacherModes = new Set(["exam", "questions", "lesson"]);
+  if (teacherModes.has(mode) && auth.user.role !== "admin") {
+    return json({ error: "هذه الأوضاع مخصصة للمعلم فقط." }, 403);
+  }
   const history = Array.isArray(body?.history) ? body.history.slice(-MAX_HISTORY).map(x => ({
     role: x?.role === "assistant" ? "assistant" : "user",
     content: String(x?.content || "").slice(0, 2500)
