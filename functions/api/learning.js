@@ -53,6 +53,7 @@ export async function onRequestPost(context) {
     const trustedDuration = Number(lesson.video_duration_seconds || 0);
     if (trustedDuration < 1 || Math.abs(duration-trustedDuration) > 2) return json({error:"مدة الفيديو لا تطابق المدة التي حددها الأستاذ."},400);
     if (position > trustedDuration + 2) return json({error:"موضع المشاهدة غير صالح"},400);
+    await db.prepare("CREATE TABLE IF NOT EXISTS lesson_video_progress (student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE, watched_seconds REAL NOT NULL DEFAULT 0, duration_seconds REAL NOT NULL DEFAULT 0, last_position REAL NOT NULL DEFAULT 0, last_heartbeat_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(student_id,lesson_id))").run();
     const now = Math.floor(Date.now()/1000);
     const previous = await db.prepare("SELECT watched_seconds,duration_seconds,last_position,last_heartbeat_at FROM lesson_video_progress WHERE student_id=? AND lesson_id=?").bind(auth.user.id,lessonId).first();
     let watched = Number(previous?.watched_seconds || 0);
@@ -71,6 +72,7 @@ export async function onRequestPost(context) {
     const lessonId = clean(body.lessonId, 80), lesson = await db.prepare("SELECT id,video_url FROM lessons WHERE id=? AND published=1").bind(lessonId).first();
     if (!lesson) return json({error:"الدرس غير متاح"},404);
     if (!String(lesson.video_url || "").trim()) return json({error:"هذا الدرس يحتاج إلى فيديو من الأستاذ قبل تسجيل إكماله."},400);
+    await db.prepare("CREATE TABLE IF NOT EXISTS lesson_video_progress (student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE, watched_seconds REAL NOT NULL DEFAULT 0, duration_seconds REAL NOT NULL DEFAULT 0, last_position REAL NOT NULL DEFAULT 0, last_heartbeat_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(student_id,lesson_id))").run();
     const watch = await db.prepare("SELECT watched_seconds,duration_seconds FROM lesson_video_progress WHERE student_id=? AND lesson_id=?").bind(auth.user.id,lessonId).first();
     if (!watch || Number(watch.duration_seconds) < 1 || Number(watch.watched_seconds) < Number(watch.duration_seconds)*0.9) return json({error:"لا يمكنك إكمال الدرس قبل مشاهدة 90٪ على الأقل من الفيديو."},400);
     await db.prepare("INSERT OR IGNORE INTO student_progress (id,student_id,lesson_id) VALUES (?,?,?)").bind(newId(),auth.user.id,lessonId).run();
