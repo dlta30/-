@@ -4,7 +4,13 @@ import { requireAdmin } from "../../_lib/auth.js";
 async function ensureClassColumn(db) {
   const columns = await db.prepare("PRAGMA table_info(users)").all();
   if (!(columns.results || []).some(column => column.name === "class_name")) {
-    await db.prepare("ALTER TABLE users ADD COLUMN class_name TEXT").run();
+    try {
+      await db.prepare("ALTER TABLE users ADD COLUMN class_name TEXT").run();
+    } catch (error) {
+      // A student profile request may have added the column at the same time.
+      const refreshed = await db.prepare("PRAGMA table_info(users)").all();
+      if (!(refreshed.results || []).some(column => column.name === "class_name")) throw error;
+    }
   }
 }
 
