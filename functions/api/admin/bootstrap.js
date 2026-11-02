@@ -19,7 +19,8 @@ async function tableColumns(db, table) {
 async function ensureSemesterColumns(db) {
   const migrations = [
     ["exams", "semester", "ALTER TABLE exams ADD COLUMN semester TEXT NOT NULL DEFAULT '1'"],
-    ["learning_units", "semester", "ALTER TABLE learning_units ADD COLUMN semester TEXT NOT NULL DEFAULT '1'"]
+    ["learning_units", "semester", "ALTER TABLE learning_units ADD COLUMN semester TEXT NOT NULL DEFAULT '1'"],
+    ["users", "class_name", "ALTER TABLE users ADD COLUMN class_name TEXT"]
   ];
   const applied = [];
   for (const [table, column, sql] of migrations) {
@@ -36,7 +37,7 @@ async function ensureSemesterColumns(db) {
 
 async function inspectDatabase(db) {
   const required = {
-    users: ["id", "name", "email", "password_hash", "password_salt", "role", "active"],
+    users: ["id", "name", "email", "password_hash", "password_salt", "role", "active", "class_name"],
     sessions: ["id", "user_id", "token_hash", "expires_at"],
     exams: ["id", "title", "created_by", "semester"],
     questions: ["id", "exam_id", "prompt", "options_json", "correct_index"],
