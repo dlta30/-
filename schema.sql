@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS lessons (
   title TEXT NOT NULL,
   summary TEXT NOT NULL DEFAULT '',
   content TEXT NOT NULL DEFAULT '',
+  video_url TEXT NOT NULL DEFAULT '',
+  video_duration_seconds INTEGER NOT NULL DEFAULT 0,
   sort_order INTEGER NOT NULL DEFAULT 0,
   published INTEGER NOT NULL DEFAULT 0,
   created_by TEXT NOT NULL REFERENCES users(id),
@@ -148,3 +150,15 @@ CREATE TABLE IF NOT EXISTS experiment_submissions (
 CREATE INDEX IF NOT EXISTS idx_resources_lesson ON resources(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_announcements_published ON announcements(published, created_at);
 CREATE INDEX IF NOT EXISTS idx_student_progress_student ON student_progress(student_id, completed_at);
+
+
+-- Server-tracked lesson video watch time (90% completion gate).
+CREATE TABLE IF NOT EXISTS lesson_video_progress (
+  student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  watched_seconds REAL NOT NULL DEFAULT 0,
+  duration_seconds REAL NOT NULL DEFAULT 0,
+  last_position REAL NOT NULL DEFAULT 0,
+  last_heartbeat_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(student_id, lesson_id)
+);
