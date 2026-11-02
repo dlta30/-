@@ -120,11 +120,11 @@ export async function onRequestPost(context) {
       if (unit) {
         unitId = unit.id;
         await db.prepare("UPDATE learning_units SET title=?,description=?,sort_order=?,published=1 WHERE id=?")
-          .bind(chapterTitle,term.title+" · محتوى تعليمي أصلي للمراجعة",i+1,unitId).run();
+          .bind(chapterTitle,"منهج الكيمياء للصف الثاني الثانوي · "+term.title+" · محتوى تعليمي أصلي للمراجعة",i+1,unitId).run();
       } else {
         unitId = makeId();
         await db.prepare("INSERT INTO learning_units (id,title,description,sort_order,published,created_by,semester) VALUES (?,?,?,?,?,?,?)")
-          .bind(unitId,chapterTitle,term.title+" · محتوى تعليمي أصلي للمراجعة",i+1,1,createdBy,term.semester).run();
+          .bind(unitId,chapterTitle,"منهج الكيمياء للصف الثاني الثانوي · "+term.title+" · محتوى تعليمي أصلي للمراجعة",i+1,1,createdBy,term.semester).run();
         unitCount++;
       }
 
@@ -161,7 +161,7 @@ export async function onRequestPost(context) {
   }
 
   const totals = await db.prepare(
-    "SELECT semester,COUNT(*) AS units FROM learning_units WHERE published=1 AND description LIKE 'كيمياء 2-%' GROUP BY semester"
+    "SELECT semester,COUNT(*) AS units FROM learning_units WHERE published=1 AND description LIKE 'منهج الكيمياء للصف الثاني الثانوي%' GROUP BY semester"
   ).all();
   return json({
     ok:true,
