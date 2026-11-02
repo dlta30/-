@@ -1,8 +1,17 @@
 import { json, readJson } from "../../_lib/http.js";
 import { requireAdmin } from "../../_lib/auth.js";
 
+async function ensureClassColumn(db) {
+  const columns = await db.prepare("PRAGMA table_info(users)").all();
+  if (!(columns.results || []).some(column => column.name === "class_name")) {
+    await db.prepare("ALTER TABLE users ADD COLUMN class_name TEXT").run();
+  }
+}
+
 export async function onRequestGet(context) {
   const auth=await requireAdmin(context);if(auth.response)return auth.response;
+  // Keep existing D1 databases compatible, even if no student has opened their profile yet.
+  await ensureClassColumn(context.env.DB);
   const rows=await context.env.DB.prepare(`
     SELECT u.id,u.name,u.email,u.active,u.created_at,u.class_name,
       COUNT(a.id) AS attempts,
