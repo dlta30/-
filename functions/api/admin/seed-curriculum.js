@@ -72,6 +72,7 @@ const topicNotes = {
 };
 
 const makeId = () => crypto.randomUUID();
+const chapterKey = title => String(title||"").split(":").slice(1).join(":").trim();
 const makeLessonContent = (chapter, lesson, note) => [
   "منصة الكيمياء | الأستاذ حسين العباس",
   chapter,
@@ -114,8 +115,8 @@ export async function onRequestPost(context) {
     const rows = existingUnits.results || [];
     for (let i=0; i<term.chapters.length; i++) {
       const [chapterTitle, lessonNames] = term.chapters[i];
-      let unit = rows.find(x => Number(x.sort_order) === i+1);
-      if (!unit) unit = rows.find(x => x.title === chapterTitle);
+      const wantedKey = chapterKey(chapterTitle);
+      let unit = rows.find(x => chapterKey(x.title) === wantedKey);
       let unitId;
       if (unit) {
         unitId = unit.id;
