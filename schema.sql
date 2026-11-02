@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_salt TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student','admin')),
   active INTEGER NOT NULL DEFAULT 1,
+  class_name TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
