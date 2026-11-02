@@ -4,14 +4,14 @@ import { hashPassword, createSession } from "../../_lib/auth.js";
 export async function onRequestPost({ request, env }) {
   try {
     const body = await readJson(request);
-    const name = String(body?.name || "").trim().replace(/\\s+/g, " ");
+    const name = String(body?.name || "").trim().replace(/\s+/g, " ");
     const email = String(body?.email || body?.identifier || "").trim().toLowerCase();
     const password = typeof body?.password === "string" ? body.password : "";
 
     if (name.length < 2 || name.length > 80) {
       return json({ error: "اكتب اسمك بشكل صحيح (من حرفين إلى 80 حرفاً)." }, 400);
     }
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 190) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 190) {
       return json({ error: "أدخل بريداً إلكترونياً صحيحاً." }, 400);
     }
     if (password.length < 8 || password.length > 128) {
