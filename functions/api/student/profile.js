@@ -15,7 +15,7 @@ export async function onRequestPatch(context) {
   if (auth.user.role !== "student") return json({error:"هذه الخاصية مخصصة للطلاب"},403);
   const body = await readJson(context.request);
   const className = String(body?.className || "").trim();
-  if (!/^(?:[1-9]|1[0-2])$/.test(className)) return json({error:"اختر فصلاً من القائمة"},400);
-  await context.env.DB.prepare("UPDATE users SET class_name=? WHERE id=? AND role='student'").bind("ثاني ثانوي - "+className,auth.user.id).run();
+  if (!/^2\/[2-5]$/.test(className)) return json({error:"اختر فصلاً من القائمة"},400);
+  await context.env.DB.prepare("UPDATE users SET class_name=? WHERE id=? AND role='student'").bind(className,auth.user.id).run();
   return json({ok:true,class_name:"ثاني ثانوي - "+className});
 }
