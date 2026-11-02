@@ -35,7 +35,7 @@ export async function onRequestPost(context) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error("Chemistry AI provider error", response.status, data?.error?.code || "unknown");
-    return json({ error: response.status === 429 ? "وصل المساعد إلى حد الاستخدام مؤقتاً. حاول لاحقاً." : "تعذر الحصول على إجابة الآن. حاول مرة أخرى." }, 502);
+    const providerCode = data?.error?.code || "";\n    const providerMessage = String(data?.error?.message || "");\n    const friendly = providerCode === "insufficient_quota" || /quota|billing|credits/i.test(providerMessage) ? "رصيد أو حد استخدام واجهة الذكاء الاصطناعي غير كافٍ. يحتاج مالك المنصة إلى تفعيل الفوترة أو زيادة الرصيد في حساب OpenAI." : response.status === 429 ? "الطلبات كثيرة حالياً. انتظر دقيقة ثم أعد الإرسال." : "تعذر الحصول على إجابة الآن. حاول مرة أخرى.";\n    return json({ error: friendly }, 502);
   }
   const answer = (data.output || []).flatMap(x => x.content || []).filter(x => x.type === "output_text").map(x => x.text).join("\n").trim();
   if (!answer) return json({ error: "لم يصل رد واضح من المساعد. أعد صياغة السؤال." }, 502);
