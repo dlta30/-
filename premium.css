@@ -81,3 +81,16 @@ html{scroll-behavior:smooth;scroll-padding-top:112px}
 .curriculum-seed h3{margin:0 0 6px;color:var(--gold-soft)}
 .curriculum-seed p{margin:0;color:var(--muted);font-size:12px}
 @media(max-width:600px){.semester-switch,.curriculum-seed{align-items:stretch;flex-direction:column}.semester-switch select{min-width:0;width:100%}}
+
+
+/* Clean PDF export for the detailed reports tab */
+@media print{
+  body *{visibility:hidden!important}
+  #appContent [data-admin-panel="reports"],#appContent [data-admin-panel="reports"] *{visibility:visible!important}
+  #appContent [data-admin-panel="reports"]{display:block!important;position:absolute!important;inset:0 auto auto 0!important;width:100%!important;background:#fff!important;color:#111!important}
+  #appContent [data-admin-panel="reports"] .card{background:#fff!important;color:#111!important;border:0!important;box-shadow:none!important}
+  #appContent [data-admin-panel="reports"] h2,#appContent [data-admin-panel="reports"] h3,#appContent [data-admin-panel="reports"] p,#appContent [data-admin-panel="reports"] td,#appContent [data-admin-panel="reports"] th{color:#111!important}
+  #appContent [data-admin-panel="reports"] table{width:100%;border-collapse:collapse}
+  #appContent [data-admin-panel="reports"] th,#appContent [data-admin-panel="reports"] td{border:1px solid #bbb!important;padding:7px!important}
+  #appContent [data-admin-panel="reports"] button,#appContent [data-admin-panel="reports"] select,#appContent [data-admin-panel="reports"] input,.notice{display:none!important}
+}
