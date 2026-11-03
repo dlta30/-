@@ -4,6 +4,8 @@ export async function onRequestGet(context) {
   const auth = await requireUser(context); if (auth.response) return auth.response;
   const { user } = auth;
   if (user.role === "admin") return json({ user, admin: true });
+  const userCols=await context.env.DB.prepare("PRAGMA table_info(users)").all();
+  if(!(userCols.results||[]).some(x=>x.name==="class_name")) await context.env.DB.prepare("ALTER TABLE users ADD COLUMN class_name TEXT").run();
   await context.env.DB.prepare("CREATE TABLE IF NOT EXISTS exam_targets (id TEXT PRIMARY KEY, exam_id TEXT NOT NULL REFERENCES exams(id) ON DELETE CASCADE, target_type TEXT NOT NULL, target_value TEXT NOT NULL DEFAULT '')").run();
   const exams = await context.env.DB.prepare(`
     SELECT e.id,e.title,e.description,e.duration_minutes,e.opens_at,e.closes_at,e.status,e.semester,
