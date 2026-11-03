@@ -4,13 +4,14 @@ export async function onRequestGet(context) {
   const auth = await requireUser(context); if (auth.response) return auth.response;
   const { user } = auth;
   if (user.role === "admin") return json({ user, admin: true });
+  await context.env.DB.prepare("CREATE TABLE IF NOT EXISTS exam_targets (id TEXT PRIMARY KEY, exam_id TEXT NOT NULL REFERENCES exams(id) ON DELETE CASCADE, target_type TEXT NOT NULL, target_value TEXT NOT NULL DEFAULT '')").run();
   const exams = await context.env.DB.prepare(`
     SELECT e.id,e.title,e.description,e.duration_minutes,e.opens_at,e.closes_at,e.status,e.semester,
       a.id AS attempt_id,a.score,a.total_points,a.submitted_at
     FROM exams e LEFT JOIN attempts a ON a.exam_id=e.id AND a.student_id=?
-    WHERE e.status='published'
+    WHERE e.status='published' AND (NOT EXISTS (SELECT 1 FROM exam_targets t WHERE t.exam_id=e.id) OR EXISTS (SELECT 1 FROM exam_targets t WHERE t.exam_id=e.id AND (t.target_type='all' OR (t.target_type='student' AND t.target_value=?) OR (t.target_type='class' AND t.target_value=(SELECT class_name FROM users WHERE id=?)))))
     ORDER BY COALESCE(e.opens_at,e.created_at) DESC
-  `).bind(user.id).all();
+  `).bind(user.id,user.id,user.id).all();
   const now = Date.now();
   const items = (exams.results || []).map(e => {
     const opens = e.opens_at ? Date.parse(e.opens_at) : null;
