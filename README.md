@@ -6,7 +6,8 @@
 - `index.html` و`app.js`: واجهة عامة، دخول الطلاب، لوحة الطالب ولوحة المدير.
 - `functions/api`: واجهات التسجيل والدخول والاختبارات والتقارير.
 - `functions/_lib`: كلمات المرور والجلسات.
-- `schema.sql` و`migrations/0001_initial.sql`: مخطط قاعدة بيانات D1 وإصدار الهجرة الأول.
+- `schema.sql` و`migrations/0001_initial.sql`: مخطط قاعدة بيانات D1 الأساسي.
+- `migrations/0003_exam_targets.sql`: جدول تخصيص الاختبارات لكل الطلاب أو شعبة أو طلاب محددين. تنشئ واجهات الاختبارات الجدول تلقائياً عند الحاجة، ويمكن تنفيذ ملف الهجرة يدوياً مسبقاً.
 
 ## النشر على Cloudflare Pages
 1. من Cloudflare Dashboard افتح **Workers & Pages → Create → Pages → Connect to Git**.
