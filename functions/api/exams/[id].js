@@ -4,6 +4,12 @@ export async function onRequestGet({ params, env, ...context }) {
   const auth=await requireUser({ ...context, env }); if(auth.response)return auth.response;
   const exam=await env.DB.prepare("SELECT id,title,description,duration_minutes,opens_at,closes_at,status FROM exams WHERE id=?").bind(params.id).first();
   if(!exam)return json({error:"الاختبار غير موجود"},404);
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS exam_targets (id TEXT PRIMARY KEY, exam_id TEXT NOT NULL REFERENCES exams(id) ON DELETE CASCADE, target_type TEXT NOT NULL, target_value TEXT NOT NULL DEFAULT '')").run();
+  if(auth.user.role!=="admin"){
+    const hasTargets=await env.DB.prepare("SELECT 1 AS ok FROM exam_targets WHERE exam_id=? LIMIT 1").bind(params.id).first();
+    const assigned=await env.DB.prepare("SELECT 1 AS ok FROM exam_targets t WHERE t.exam_id=? AND (t.target_type='all' OR (t.target_type='student' AND t.target_value=?) OR (t.target_type='class' AND t.target_value=(SELECT class_name FROM users WHERE id=?))) LIMIT 1").bind(params.id,auth.user.id,auth.user.id).first();
+    if(hasTargets&&!assigned)return json({error:"هذا الاختبار غير مخصص لحسابك"},403);
+  }
   if(auth.user.role!=="admin"&&exam.status!=="published")return json({error:"الاختبار غير متاح"},404);
   const attempt=auth.user.role==="student"?await env.DB.prepare("SELECT id,score,total_points,answers_json,submitted_at FROM attempts WHERE exam_id=? AND student_id=?").bind(params.id,auth.user.id).first():null;
   if(attempt){
