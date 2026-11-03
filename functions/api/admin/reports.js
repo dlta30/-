@@ -41,7 +41,7 @@ export async function onRequestGet(context) {
     const examIds=[...new Set(attempts.map(a=>a.exam_id))];
     let commonMistakes=[];
     if(examIds.length){
-      const qs=await db.prepare("SELECT exam_id,prompt,correct_index FROM questions WHERE exam_id IN ("+examIds.map(()=>"?").join(",")+")").bind(...examIds).all();
+      const qs=await db.prepare("SELECT id,exam_id,prompt,correct_index FROM questions WHERE exam_id IN ("+examIds.map(()=>"?").join(",")+")").bind(...examIds).all();
       const counts=new Map();
       for(const q of qs.results||[]){
         for(const a of attempts){
