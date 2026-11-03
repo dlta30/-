@@ -6,6 +6,10 @@ export async function onRequestPost(context) {
   const {id}=context.params;
   const exam=await context.env.DB.prepare("SELECT id,status,opens_at,closes_at FROM exams WHERE id=?").bind(id).first();
   if(!exam||exam.status!=="published")return json({error:"الاختبار غير متاح"},404);
+  await context.env.DB.prepare("CREATE TABLE IF NOT EXISTS exam_targets (id TEXT PRIMARY KEY, exam_id TEXT NOT NULL REFERENCES exams(id) ON DELETE CASCADE, target_type TEXT NOT NULL, target_value TEXT NOT NULL DEFAULT '')").run();
+  const hasTargets=await context.env.DB.prepare("SELECT 1 AS ok FROM exam_targets WHERE exam_id=? LIMIT 1").bind(id).first();
+  const assigned=await context.env.DB.prepare("SELECT 1 AS ok FROM exam_targets t WHERE t.exam_id=? AND (t.target_type='all' OR (t.target_type='student' AND t.target_value=?) OR (t.target_type='class' AND t.target_value=(SELECT class_name FROM users WHERE id=?))) LIMIT 1").bind(id,auth.user.id,auth.user.id).first();
+  if(hasTargets&&!assigned)return json({error:"هذا الاختبار غير مخصص لحسابك"},403);
   const now=Date.now();
   if((exam.opens_at&&Date.parse(exam.opens_at)>now)||(exam.closes_at&&Date.parse(exam.closes_at)<now))return json({error:"انتهى وقت الاختبار أو لم يبدأ بعد"},403);
   const previous=await context.env.DB.prepare("SELECT id FROM attempts WHERE exam_id=? AND student_id=?").bind(id,auth.user.id).first();
