@@ -21,8 +21,8 @@ export async function onRequestGet(context) {
       CASE WHEN a.total_points>0 THEN ROUND(a.score*100.0/a.total_points,1) ELSE 0 END AS percentage
       FROM attempts a JOIN users u ON u.id=a.student_id JOIN exams e ON e.id=a.exam_id
       LEFT JOIN exam_starts s ON s.exam_id=a.exam_id AND s.student_id=a.student_id
-      WHERE (?='' OR COALESCE(u.class_name,'')=?) AND (?='' OR a.exam_id=?) AND (?='' OR u.name LIKE '%'||?||'%' OR e.title LIKE '%'||?||'%')
-      ORDER BY a.submitted_at DESC LIMIT 1000`).bind(className,className,examId,examId,search,search,search).all();
+      WHERE (?='' OR (?='غير محدد' AND COALESCE(u.class_name,'')='') OR COALESCE(u.class_name,'')=?) AND (?='' OR a.exam_id=?) AND (?='' OR u.name LIKE '%'||?||'%' OR e.title LIKE '%'||?||'%')
+      ORDER BY a.submitted_at DESC LIMIT 1000`).bind(className,className,className,examId,examId,search,search,search).all();
     const attempts=(rows.results||[]).map(x=>({...x,answers:JSON.parse(x.answers_json||"{}")}));
     const classMap=new Map();
     for(const a of attempts){
@@ -30,7 +30,8 @@ export async function onRequestGet(context) {
       if(!classMap.has(key))classMap.set(key,{class_name:key,attempts:0,students:new Set(),sum:0,passed:0});
       const c=classMap.get(key);c.attempts++;c.students.add(a.student_id);c.sum+=Number(a.percentage)||0;if(a.percentage>=60)c.passed++;
     }
-    const classes=[...classMap.values()].map(c=>({class_name:c.class_name,attempts:c.attempts,students:c.students.size,average_percent:Number((c.sum/c.attempts).toFixed(1)),pass_rate:Number((c.passed/c.attempts*100).toFixed(1))}));
+    const roster=await db.prepare("SELECT COALESCE(NULLIF(class_name,''),'غير محدد') AS class_name,COUNT(*) AS total_students FROM users WHERE role='student' AND active=1 GROUP BY COALESCE(NULLIF(class_name,''),'غير محدد')").all();
+    const classes=[...classMap.values()].map(c=>({class_name:c.class_name,attempts:c.attempts,students:Number((roster.results||[]).find(x=>x.class_name===c.class_name)?.total_students||c.students.size),participants:c.students.size,average_percent:Number((c.sum/c.attempts).toFixed(1)),pass_rate:Number((c.passed/c.attempts*100).toFixed(1))}));
     const studentMap=new Map();
     for(const a of attempts){
       if(!studentMap.has(a.student_id))studentMap.set(a.student_id,{student_id:a.student_id,student_name:a.student_name,class_name:a.class_name||"غير محدد",attempts:0,sum:0,results:[]});
