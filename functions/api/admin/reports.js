@@ -38,7 +38,24 @@ export async function onRequestGet(context) {
       s.results.push({attempt_id:a.id,exam_id:a.exam_id,exam_title:a.exam_title,score:a.score,total_points:a.total_points,percentage:a.percentage,submitted_at:a.submitted_at,duration_seconds:a.duration_seconds});
     }
     const students=[...studentMap.values()].map(s=>({...s,average_percent:Number((s.sum/s.attempts).toFixed(1))}));
-    return json({attempts,classes,students,filters:{className,examId,search},generatedAt:new Date().toISOString()});
+    const examIds=[...new Set(attempts.map(a=>a.exam_id))];
+    let commonMistakes=[];
+    if(examIds.length){
+      const qs=await db.prepare("SELECT exam_id,prompt,correct_index FROM questions WHERE exam_id IN ("+examIds.map(()=>"?").join(",")+")").bind(...examIds).all();
+      const counts=new Map();
+      for(const q of qs.results||[]){
+        for(const a of attempts){
+          if(a.exam_id!==q.exam_id)continue;
+          if(Number(a.answers?.[q.id])!==Number(q.correct_index)){
+            const key=q.exam_id+"|"+q.prompt;
+            if(!counts.has(key))counts.set(key,{exam_id:q.exam_id,exam_title:a.exam_title,question:q.prompt,wrong_count:0});
+            counts.get(key).wrong_count++;
+          }
+        }
+      }
+      commonMistakes=[...counts.values()].sort((a,b)=>b.wrong_count-a.wrong_count).slice(0,10);
+    }
+    return json({attempts,classes,students,commonMistakes,filters:{className,examId,search},generatedAt:new Date().toISOString()});
   } catch(error) {
     console.error("Reports endpoint failed",error?.stack||error);
     return json({error:"تعذر تحميل التقارير",detail:String(error?.message||error)},500);
