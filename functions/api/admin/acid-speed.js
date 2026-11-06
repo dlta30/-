@@ -13,7 +13,7 @@ export async function onRequestGet(context) {
     )`).run();
     const result=await db.prepare(`
       WITH ranked AS (
-        SELECT s.*, ROW_NUMBER() OVER (
+        SELECT s.*, s.rowid AS attempt_order, ROW_NUMBER() OVER (
           PARTITION BY student_id ORDER BY score DESC, elapsed_ms ASC, played_at ASC, id ASC
         ) AS rn
         FROM acid_speed_scores s
