@@ -21,9 +21,7 @@ export async function onRequestGet(context) {
       SELECT u.id AS student_id,u.name,u.email,u.class_name,
         r.score,r.correct_count,r.elapsed_ms,r.played_at,
         (SELECT COUNT(*) FROM acid_speed_scores all_plays
-          WHERE all_plays.student_id=r.student_id AND
-            (all_plays.played_at<r.played_at OR
-             (all_plays.played_at=r.played_at AND all_plays.id<=r.id))) AS attempts_to_best,
+          WHERE all_plays.student_id=r.student_id AND all_plays.rowid<=r.attempt_order) AS attempts_to_best,
         (SELECT COUNT(*) FROM acid_speed_scores all_plays WHERE all_plays.student_id=r.student_id) AS total_attempts
       FROM ranked r JOIN users u ON u.id=r.student_id
       WHERE r.rn=1
