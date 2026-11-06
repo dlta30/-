@@ -21,14 +21,14 @@ export async function onRequestGet(context) {
   try {
     await ensureTable(db);
     const [best, leaderboard, total] = await Promise.all([
-      db.prepare("SELECT MAX(score) AS score, MIN(elapsed_ms) AS elapsed_ms FROM acid_speed_scores WHERE student_id=?").bind(auth.user.id).first(),
+      db.prepare("SELECT score,elapsed_ms,played_at FROM acid_speed_scores WHERE student_id=? ORDER BY score DESC,elapsed_ms ASC,played_at ASC,id ASC LIMIT 1").bind(auth.user.id).first(),
       db.prepare(`SELECT u.name, MAX(s.score) AS score,
         MIN(CASE WHEN s.score=(SELECT MAX(s2.score) FROM acid_speed_scores s2 WHERE s2.student_id=s.student_id) THEN s.elapsed_ms END) AS elapsed_ms
         FROM acid_speed_scores s JOIN users u ON u.id=s.student_id
         GROUP BY s.student_id ORDER BY score DESC, elapsed_ms ASC LIMIT 20`).all(),
       db.prepare("SELECT COUNT(*) AS plays FROM acid_speed_scores WHERE student_id=?").bind(auth.user.id).first()
     ]);
-    return json({bestScore:Number(best?.score||0),bestTimeMs:Number(best?.elapsed_ms||0),plays:Number(total?.plays||0),leaderboard:leaderboard.results||[]});
+    const attemptsToBest=best?.played_at?await db.prepare("SELECT COUNT(*) AS n FROM acid_speed_scores WHERE student_id=? AND played_at<=?").bind(auth.user.id,best.played_at).first():{n:0};\n    return json({bestScore:Number(best?.score||0),bestTimeMs:Number(best?.elapsed_ms||0),bestAttempts:Number(attemptsToBest?.n||0),plays:Number(total?.plays||0),leaderboard:leaderboard.results||[]});
   } catch(error) {
     console.error("Acid speed leaderboard failed",error);
     return json({error:"تعذر تحميل لوحة المتصدرين حالياً"},500);
@@ -48,13 +48,13 @@ export async function onRequestPost(context) {
     await ensureTable(db);
     await db.prepare("INSERT INTO acid_speed_scores (id,student_id,score,correct_count,elapsed_ms) VALUES (?,?,?,?,?)")
       .bind(newId(),auth.user.id,score,correct,elapsed).run();
-    const best=await db.prepare("SELECT score,elapsed_ms FROM acid_speed_scores WHERE student_id=? ORDER BY score DESC,elapsed_ms ASC LIMIT 1").bind(auth.user.id).first();
+    const best=await db.prepare("SELECT score,elapsed_ms,played_at FROM acid_speed_scores WHERE student_id=? ORDER BY score DESC,elapsed_ms ASC,played_at ASC,id ASC LIMIT 1").bind(auth.user.id).first();
     const total=await db.prepare("SELECT COUNT(*) AS plays FROM acid_speed_scores WHERE student_id=?").bind(auth.user.id).first();
     const leaderboard=await db.prepare(`SELECT u.name, MAX(s.score) AS score,
       MIN(CASE WHEN s.score=(SELECT MAX(s2.score) FROM acid_speed_scores s2 WHERE s2.student_id=s.student_id) THEN s.elapsed_ms END) AS elapsed_ms
       FROM acid_speed_scores s JOIN users u ON u.id=s.student_id
       GROUP BY s.student_id ORDER BY score DESC,elapsed_ms ASC LIMIT 20`).all();
-    return json({ok:true,bestScore:Number(best?.score||0),bestTimeMs:Number(best?.elapsed_ms||0),plays:Number(total?.plays||0),leaderboard:leaderboard.results||[]});
+    const attemptsToBest=await db.prepare("SELECT COUNT(*) AS n FROM acid_speed_scores WHERE student_id=? AND played_at<=?").bind(auth.user.id,best.played_at).first();\n    return json({ok:true,bestScore:Number(best?.score||0),bestTimeMs:Number(best?.elapsed_ms||0),bestAttempts:Number(attemptsToBest?.n||0),plays:Number(total?.plays||0),leaderboard:leaderboard.results||[]});
   } catch(error) {
     console.error("Acid speed score save failed",error);
     return json({error:"تعذر حفظ النتيجة. حاول مرة أخرى."},500);
