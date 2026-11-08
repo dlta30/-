@@ -34,7 +34,7 @@
       const d=await api("/api/student-videos");
       const own=d.videos.filter(v=>v.isMine);
       const others=d.videos.filter(v=>!v.isMine);
-      panel.innerHTML=(admin?'<article class="card" style="margin-bottom:15px"><div class="rowcard"><div><h2>إعدادات مقاطع الطلاب</h2><p>عند تفعيل الخيار، يستطيع الطلاب مشاهدة المقاطع التي أظهرها الأستاذ فقط.</p></div><button class="btn '+(d.studentsCanViewOthers?'primary':'ghost')+' small" id="toggleStudentVideoGallery">'+(d.studentsCanViewOthers?'إيقاف مشاهدة مقاطع الآخرين':'السماح للطلاب بمشاهدة مقاطع الآخرين')+'</button></div><div style="border-top:1px solid var(--line);margin-top:15px;padding-top:14px"><div id="studentVideoDriveStatus">جارٍ التحقق من ربط Google Drive...</div><button class="btn ghost small" id="connectStudentVideoDrive" style="margin-top:10px">ربط Google Drive المجاني</button><p class="student-video-note">يُحفظ الفيديو في مساحة Google Drive الخاصة بالأستاذ (ضمن السعة المجانية المتاحة).</p></div></article>':'<article class="card" style="margin-bottom:15px"><h2>مقاطع طلاب</h2><p>ارفع مقطعك مباشرة من ألبوم الصور. بعد الرفع لا يمكنك حذفه. الحد الأقصى للمدة 5 دقائق.</p></article>')+
+      panel.innerHTML=(admin?'<article class="card" style="margin-bottom:15px"><div class="rowcard"><div><h2>إعدادات مقاطع الطلاب</h2><p>عند تفعيل الخيار، يستطيع الطلاب مشاهدة المقاطع التي أظهرها الأستاذ فقط.</p></div><button class="btn '+(d.studentsCanViewOthers?'primary':'ghost')+' small" id="toggleStudentVideoGallery">'+(d.studentsCanViewOthers?'إيقاف مشاهدة مقاطع الآخرين':'السماح للطلاب بمشاهدة مقاطع الآخرين')+'</button></div><div style="border-top:1px solid var(--line);margin-top:15px;padding-top:14px"><div id="studentVideoDriveStatus">جارٍ التحقق من ربط Google Drive...</div><button class="btn ghost small" id="connectStudentVideoDrive" style="margin-top:10px">ربط الحساب الأول</button><button class="btn ghost small" id="connectStudentVideoDrive2" style="margin-top:8px">ربط الحساب الثاني</button><p class="student-video-note">يُحفظ الفيديو في مساحة Google Drive الخاصة بالأستاذ (ضمن السعة المجانية المتاحة).</p></div></article>':'<article class="card" style="margin-bottom:15px"><h2>مقاطع طلاب</h2><p>ارفع مقطعك مباشرة من ألبوم الصور. بعد الرفع لا يمكنك حذفه. الحد الأقصى للمدة 5 دقائق.</p></article>')+
       (!admin?'<form class="student-video-upload" id="studentVideoUpload"><h3>رفع مقطع جديد</h3><div class="field"><label>عنوان المقطع</label><input name="title" maxlength="120" required placeholder="مثال: تجربة تفاعل كيميائي"></div><div class="field"><label>اختر فيديو من الألبوم</label><input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" required></div><div class="student-video-note">الصيغ: MP4 أو WebM أو MOV · الحد الأقصى 5 دقائق و100 ميجابايت.</div><div class="student-video-progress"><span id="studentVideoProgress"></span></div><button class="btn primary" id="studentVideoSubmit">رفع المقطع</button></form>':'')+
       (admin?'<h2>جميع المقاطع ('+d.videos.length+')</h2>': '<h2>مقاطعك</h2>')+
       (own.length||admin?'<div class="student-video-grid">'+(admin?d.videos:own).map(v=>videoCard(v,admin)).join("")+'</div>':'<div class="empty">لم ترفع أي مقطع بعد.</div>')+
@@ -42,10 +42,14 @@
       if(admin) {
         const driveStatus=panel.querySelector("#studentVideoDriveStatus");
         const driveButton=panel.querySelector("#connectStudentVideoDrive");
-        driveButton.onclick=()=>{location.href="/api/drive/connect";};
+        const secondDriveButton=panel.querySelector("#connectStudentVideoDrive2");
+        driveButton.onclick=()=>{location.href="/api/drive/connect?slot=1";};
+        secondDriveButton.onclick=()=>{location.href="/api/drive/connect?slot=2";};
         api("/api/drive/status").then(status=>{
-          driveStatus.textContent=status.connected?"Google Drive مرتبط: "+status.email+(status.folderReady?" · مجلد المقاطع جاهز":" · التخزين جاهز"):"Google Drive غير مربوط بعد. اربط حساب الأستاذ أولاً.";
-          driveButton.textContent=status.connected?"إعادة ربط Google Drive":"ربط Google Drive";
+          const accounts=status.accounts||[];
+          driveStatus.textContent=accounts.map(a=>a.email?"الحساب "+a.slot+": "+a.email:"الحساب "+a.slot+": غير مربوط").join(" | ");
+          driveButton.textContent=accounts.some(a=>a.slot===1&&a.email)?"إعادة ربط الحساب الأول":"ربط الحساب الأول";
+          secondDriveButton.textContent=accounts.some(a=>a.slot===2&&a.email)?"إعادة ربط الحساب الثاني":"ربط الحساب الثاني";
         }).catch(()=>{driveStatus.textContent="تعذر التحقق من حالة Google Drive.";});
         panel.querySelector("#toggleStudentVideoGallery").onclick=async()=>{try{await api("/api/student-videos/manage",{method:"PATCH",body:JSON.stringify({action:"global",enabled:!d.studentsCanViewOthers})});toast("تم تحديث إتاحة مشاهدة مقاطع الطلاب");await loadVideos(admin,panel);}catch(e){toast(e.message);}};
         panel.querySelectorAll("[data-video-publish]").forEach(b=>b.onclick=async()=>{try{await api("/api/student-videos/manage",{method:"PATCH",body:JSON.stringify({id:b.dataset.videoPublish,published:b.dataset.published!=="1"})});toast(b.dataset.published==="1"?"تم إخفاء المقطع":"تم إظهار المقطع للطلاب");await loadVideos(admin,panel);}catch(e){toast(e.message);}});
