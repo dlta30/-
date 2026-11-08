@@ -1,11 +1,10 @@
 import { json } from "../../_lib/http.js";
 import { requireUser } from "../../_lib/auth.js";
+import { getDriveAccessToken } from "../../_lib/google-drive.js";
 
 export async function onRequestGet(context) {
   const auth = await requireUser(context);
   if (auth.response) return auth.response;
-  const bucket = context.env.STUDENT_VIDEOS;
-  if (!bucket) return json({error:"تخزين الفيديوهات غير مربوط."},503);
   const id = new URL(context.request.url).searchParams.get("id") || "";
   if (!id || id.length > 80) return json({error:"المقطع غير موجود."},400);
   const row = await context.env.DB.prepare("SELECT id,student_id,object_key,content_type,published FROM student_videos WHERE id=?").bind(id).first();
@@ -14,42 +13,25 @@ export async function onRequestGet(context) {
     const global = await context.env.DB.prepare("SELECT students_can_view_others FROM student_video_settings WHERE id=1").first();
     if (!row.published || !global?.students_can_view_others) return json({error:"هذا المقطع غير متاح لك حالياً."},403);
   }
-  const rangeHeader = context.request.headers.get("Range");
-  let options;
-  let status = 200;
-  let start = 0;
-  let end = null;
-  let object = await bucket.get(row.object_key);
-  if (!object) return json({error:"ملف الفيديو غير موجود في التخزين."},404);
-  const total = object.size;
-  if (rangeHeader) {
-    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
-    if (!match || (!match[1] && !match[2])) return new Response(null,{status:416,headers:{"content-range":`bytes */${total}`}});
-    if (!match[1]) {
-      const suffix = Number(match[2]);
-      if (!Number.isSafeInteger(suffix) || suffix <= 0) return new Response(null,{status:416,headers:{"content-range":`bytes */${total}`}});
-      start = Math.max(0,total-suffix);
-      end = total-1;
-    } else {
-      start = Number(match[1]);
-      end = match[2] ? Number(match[2]) : total-1;
+  try {
+    const token = await getDriveAccessToken(context.env,context.env.DB);
+    const headers = {authorization:"Bearer "+token};
+    const range = context.request.headers.get("Range");
+    if (range) headers.Range = range;
+    const upstream = await fetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(row.object_key)+"?alt=media",{headers});
+    if (!upstream.ok) return json({error:upstream.status===404?"ملف الفيديو غير موجود في Google Drive.":"تعذر تحميل الفيديو من Google Drive."},upstream.status===404?404:502);
+    const responseHeaders = new Headers();
+    responseHeaders.set("content-type",row.content_type);
+    responseHeaders.set("content-disposition",'inline; filename="student-video"');
+    responseHeaders.set("cache-control","private, no-store");
+    responseHeaders.set("x-content-type-options","nosniff");
+    responseHeaders.set("accept-ranges","bytes");
+    for (const name of ["content-length","content-range","accept-ranges","etag"]) {
+      const value=upstream.headers.get(name);
+      if(value) responseHeaders.set(name,value);
     }
-    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || start >= total) return new Response(null,{status:416,headers:{"content-range":`bytes */${total}`}});
-    end = Math.min(end,total-1);
-    options = {range:{offset:start,length:end-start+1}};
-    object = await bucket.get(row.object_key,options);
-    if (!object) return json({error:"تعذر قراءة جزء الفيديو."},404);
-    status = 206;
+    return new Response(upstream.body,{status:upstream.status,headers:responseHeaders});
+  } catch(error) {
+    return json({error:"تعذر تشغيل الفيديو. قد يحتاج الأستاذ إلى إعادة ربط Google Drive."},503);
   }
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set("content-type",row.content_type);
-  headers.set("content-disposition","inline; filename=\"student-video\"");
-  headers.set("cache-control","private, no-store");
-  headers.set("x-content-type-options","nosniff");
-  headers.set("accept-ranges","bytes");
-  headers.set("content-length",String(status===206?end-start+1:total));
-  if (status===206) headers.set("content-range",`bytes ${start}-${end}/${total}`);
-  if (object.httpEtag) headers.set("etag",object.httpEtag);
-  return new Response(object.body,{status,headers});
 }
