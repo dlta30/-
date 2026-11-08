@@ -17,7 +17,7 @@ export async function onRequestPost(context) {
   const chunk=await context.request.arrayBuffer();
   if(chunk.byteLength!==end-start+1) return json({error:"الجزء المرسل غير مكتمل."},400);
   try {
-    const upstream=await fetch(row.upload_url,{method:"PUT",headers:{"content-type":row.content_type,"content-range":"bytes "+start+"-"+end+"/"+total},body:chunk});
+    const upstream=await fetch(row.upload_url,{method:"PUT",headers:{"content-type":row.content_type,"content-range":"bytes "+start+"-"+end+"/"+total},body:chunk,redirect:"manual"});
     if(upstream.status===308) {
       const range=upstream.headers.get("range")||"";
       const match=range.match(/-(\d+)$/);
