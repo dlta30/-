@@ -1,5 +1,5 @@
-import { json, readJson, newId } from "../_lib/http.js";
-import { requireUser, requireAdmin } from "../_lib/auth.js";
+import { json, newId } from "../_lib/http.js";
+import { requireUser } from "../_lib/auth.js";
 
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_SECONDS = 300;
@@ -47,7 +47,8 @@ export async function onRequestPost(context) {
   if (!bucket) return json({error:"تخزين الفيديوهات غير مربوط بعد. يحتاج المشروع إلى R2 binding باسم STUDENT_VIDEOS."},503);
   const request = context.request;
   let titleHeader = request.headers.get("x-video-title") || "";
-  try { titleHeader = decodeURIComponent(titleHeader); } catch {}\n  const title = clean(titleHeader,120);
+  try { titleHeader = decodeURIComponent(titleHeader); } catch {}
+  const title = clean(titleHeader,120);
   const contentType = (request.headers.get("content-type")||"").split(";")[0].toLowerCase();
   const size = Number(request.headers.get("content-length")||0);
   const duration = Number(request.headers.get("x-video-duration"));
