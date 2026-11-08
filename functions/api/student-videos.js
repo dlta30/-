@@ -1,6 +1,6 @@
 import { json, newId } from "../_lib/http.js";
 import { requireUser } from "../_lib/auth.js";
-import { uploadDriveVideo, deleteDriveFile } from "../_lib/google-drive.js";
+import { uploadDriveVideo, deleteDriveFile, ensureDriveTable } from "../_lib/google-drive.js";
 
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_SECONDS = 300;
@@ -59,6 +59,7 @@ export async function onRequestPost(context) {
   let driveFileId = null;
   let slot = 1;
   try {
+    await ensureDriveTable(context.env.DB);
     const first = await context.env.DB.prepare("SELECT 1 AS ok FROM google_drive_config WHERE id=1").first();
     const second = await context.env.DB.prepare("SELECT 1 AS ok FROM google_drive_account_two WHERE id=1").first();
     const available = [];
