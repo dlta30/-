@@ -6,6 +6,7 @@ export async function onRequestGet(context) {
   if(auth.response) return auth.response;
   const {request,env}=context;
   if(!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return json({error:"إعداد Google OAuth غير مكتمل. يلزم GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET."},503);
+  const slot=new URL(request.url).searchParams.get("slot")==="2"?2:1;
   const state=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,"0")).join("");
   const redirectUri=new URL("/api/drive/callback",request.url).toString();
   const params=new URLSearchParams({
@@ -15,5 +16,6 @@ export async function onRequestGet(context) {
   });
   const headers=new Headers({location:"https://accounts.google.com/o/oauth2/v2/auth?"+params.toString()});
   headers.append("set-cookie","drive_oauth_state="+state+"; Path=/api/drive; HttpOnly; Secure; SameSite=Lax; Max-Age=600");
+  headers.append("set-cookie","drive_oauth_slot="+slot+"; Path=/api/drive; HttpOnly; Secure; SameSite=Lax; Max-Age=600");
   return new Response(null,{status:302,headers});
 }
