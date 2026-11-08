@@ -15,6 +15,7 @@ async function ensureTables(db) {
     published INTEGER NOT NULL DEFAULT 0 CHECK (published IN (0,1)),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`).run();
+  await db.prepare("ALTER TABLE student_videos ADD COLUMN drive_slot INTEGER NOT NULL DEFAULT 1").run().catch(()=>{});
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_student_videos_owner ON student_videos(student_id,created_at DESC)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_student_videos_published ON student_videos(published,created_at DESC)").run();
   await db.prepare("CREATE TABLE IF NOT EXISTS student_video_settings (id INTEGER PRIMARY KEY CHECK(id=1), students_can_view_others INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT (datetime('now')))").run();
@@ -56,13 +57,23 @@ export async function onRequestPost(context) {
   if (!request.body) return json({error:"لم يتم استلام ملف الفيديو."},400);
   const id = newId();
   let driveFileId = null;
+  let slot = 1;
   try {
-    const uploaded = await uploadDriveVideo(context,request.body,contentType,size,title+" - "+id);
+    const first = await context.env.DB.prepare("SELECT 1 AS ok FROM google_drive_config WHERE id=1").first();
+    const second = await context.env.DB.prepare("SELECT 1 AS ok FROM google_drive_account_two WHERE id=1").first();
+    const available = [];
+    if (first) available.push(1);
+    if (second) available.push(2);
+    if (!available.length) throw new Error("Google Drive is not connected.");
+    const counts = await context.env.DB.prepare("SELECT drive_slot,COUNT(*) AS total FROM student_videos GROUP BY drive_slot").all();
+    const totals = new Map((counts.results||[]).map(r=>[Number(r.drive_slot),Number(r.total)]));
+    slot = available.sort((a,b)=>(totals.get(a)||0)-(totals.get(b)||0))[0];
+    const uploaded = await uploadDriveVideo(context,request.body,contentType,size,title+" - "+id,slot);
     driveFileId = uploaded.id;
-    await context.env.DB.prepare("INSERT INTO student_videos (id,student_id,title,object_key,content_type,size_bytes,duration_seconds,published) VALUES (?,?,?,?,?,?,?,0)")
-      .bind(id,auth.user.id,title,driveFileId,contentType,size,Math.round(duration)).run();
+    await context.env.DB.prepare("INSERT INTO student_videos (id,student_id,title,object_key,content_type,size_bytes,duration_seconds,published,drive_slot) VALUES (?,?,?,?,?,?,?,0,?)")
+      .bind(id,auth.user.id,title,driveFileId,contentType,size,Math.round(duration),slot).run();
   } catch (error) {
-    if (driveFileId) { try { await deleteDriveFile(context.env,context.env.DB,driveFileId); } catch {} }
+    if (driveFileId) { try { await deleteDriveFile(context.env,context.env.DB,driveFileId,slot); } catch {} }
     return json({error:"تعذر حفظ المقطع في Google Drive. تأكد أن الأستاذ ربط حساب Google Drive ثم حاول مجدداً.",detail:String(error?.message||"")},500);
   }
   return json({ok:true,id,message:"تم رفع المقطع إلى Google Drive بنجاح. لا يمكن للطالب حذفه، وسيظهر للأستاذ للمراجعة."},201);
