@@ -46,7 +46,8 @@ export async function onRequestPost(context) {
   const bucket = context.env.STUDENT_VIDEOS;
   if (!bucket) return json({error:"تخزين الفيديوهات غير مربوط بعد. يحتاج المشروع إلى R2 binding باسم STUDENT_VIDEOS."},503);
   const request = context.request;
-  let titleHeader = request.headers.get("x-video-title") || "";\n  try { titleHeader = decodeURIComponent(titleHeader); } catch {}\n  const title = clean(titleHeader,120);
+  let titleHeader = request.headers.get("x-video-title") || "";
+  try { titleHeader = decodeURIComponent(titleHeader); } catch {}\n  const title = clean(titleHeader,120);
   const contentType = (request.headers.get("content-type")||"").split(";")[0].toLowerCase();
   const size = Number(request.headers.get("content-length")||0);
   const duration = Number(request.headers.get("x-video-duration"));
