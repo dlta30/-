@@ -45,7 +45,7 @@ export async function onRequestGet(context){
   await ensureDriveTable(env.DB);
   const encrypted=await encryptRefreshToken(env,tokens.refresh_token);
   const targetTable=slot===2?"google_drive_account_two":"google_drive_config";
-  await env.DB.prepare("INSERT INTO "+targetTable+ (id,refresh_token_cipher,refresh_token_iv,connected_email,folder_id,updated_at) VALUES (1,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET refresh_token_cipher=excluded.refresh_token_cipher,refresh_token_iv=excluded.refresh_token_iv,connected_email=excluded.connected_email,folder_id=excluded.folder_id,updated_at=datetime('now')")
+  await env.DB.prepare("INSERT INTO "+targetTable+" (id,refresh_token_cipher,refresh_token_iv,connected_email,folder_id,updated_at) VALUES (1,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET refresh_token_cipher=excluded.refresh_token_cipher,refresh_token_iv=excluded.refresh_token_iv,connected_email=excluded.connected_email,folder_id=excluded.folder_id,updated_at=datetime('now')")
     .bind(encrypted.cipher,encrypted.iv,String(profile.email||"").slice(0,254),folderId).run();
   return redirect(request,"drive_connected");
 }
