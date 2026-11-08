@@ -7,14 +7,14 @@ export async function onRequestGet(context) {
   if (auth.response) return auth.response;
   const id = new URL(context.request.url).searchParams.get("id") || "";
   if (!id || id.length > 80) return json({error:"المقطع غير موجود."},400);
-  const row = await context.env.DB.prepare("SELECT id,student_id,object_key,content_type,published FROM student_videos WHERE id=?").bind(id).first();
+  const row = await context.env.DB.prepare("SELECT id,student_id,object_key,content_type,published,drive_slot FROM student_videos WHERE id=?").bind(id).first();
   if (!row) return json({error:"المقطع غير موجود."},404);
   if (auth.user.role !== "admin" && row.student_id !== auth.user.id) {
     const global = await context.env.DB.prepare("SELECT students_can_view_others FROM student_video_settings WHERE id=1").first();
     if (!row.published || !global?.students_can_view_others) return json({error:"هذا المقطع غير متاح لك حالياً."},403);
   }
   try {
-    const token = await getDriveAccessToken(context.env,context.env.DB);
+    const token = await getDriveAccessToken(context.env,context.env.DB,Number(row.drive_slot||1));
     const headers = {authorization:"Bearer "+token};
     const range = context.request.headers.get("Range");
     if (range) headers.Range = range;
