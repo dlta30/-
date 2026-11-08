@@ -1,5 +1,6 @@
 import { json, newId } from "../_lib/http.js";
 import { requireUser } from "../_lib/auth.js";
+import { uploadDriveVideo, deleteDriveFile } from "../_lib/google-drive.js";
 
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_SECONDS = 300;
@@ -27,8 +28,6 @@ async function setting(db) {
 export async function onRequestGet(context) {
   const auth = await requireUser(context);
   if (auth.response) return auth.response;
-  const bucket = context.env.STUDENT_VIDEOS;
-  if (!bucket) return json({error:"تخزين الفيديوهات غير مربوط بعد. يحتاج المشروع إلى R2 binding باسم STUDENT_VIDEOS."},503);
   const db = context.env.DB;
   await ensureTables(db);
   const global = await setting(db);
@@ -43,8 +42,6 @@ export async function onRequestPost(context) {
   const auth = await requireUser(context);
   if (auth.response) return auth.response;
   if (auth.user.role !== "student") return json({error:"رفع المقاطع متاح لحساب الطالب فقط."},403);
-  const bucket = context.env.STUDENT_VIDEOS;
-  if (!bucket) return json({error:"تخزين الفيديوهات غير مربوط بعد. يحتاج المشروع إلى R2 binding باسم STUDENT_VIDEOS."},503);
   const request = context.request;
   let titleHeader = request.headers.get("x-video-title") || "";
   try { titleHeader = decodeURIComponent(titleHeader); } catch {}
@@ -57,14 +54,16 @@ export async function onRequestPost(context) {
   if (!Number.isSafeInteger(size) || size < 1 || size > MAX_BYTES) return json({error:"حجم المقطع يجب ألا يتجاوز 100 ميجابايت."},413);
   if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_SECONDS) return json({error:"مدة المقطع يجب ألا تتجاوز 5 دقائق."},400);
   if (!request.body) return json({error:"لم يتم استلام ملف الفيديو."},400);
-  const id = newId(), key = "student-videos/"+id;
+  const id = newId();
+  let driveFileId = null;
   try {
-    await bucket.put(key, request.body, {httpMetadata:{contentType},customMetadata:{studentId:auth.user.id,title,durationSeconds:String(Math.round(duration))}});
+    const uploaded = await uploadDriveVideo(context,request.body,contentType,size,title+" - "+id);
+    driveFileId = uploaded.id;
     await context.env.DB.prepare("INSERT INTO student_videos (id,student_id,title,object_key,content_type,size_bytes,duration_seconds,published) VALUES (?,?,?,?,?,?,?,0)")
-      .bind(id,auth.user.id,title,key,contentType,size,Math.round(duration)).run();
+      .bind(id,auth.user.id,title,driveFileId,contentType,size,Math.round(duration)).run();
   } catch (error) {
-    try { await bucket.delete(key); } catch {}
-    return json({error:"تعذر حفظ المقطع. حاول مرة أخرى.",detail:String(error?.message||"")},500);
+    if (driveFileId) { try { await deleteDriveFile(context.env,context.env.DB,driveFileId); } catch {} }
+    return json({error:"تعذر حفظ المقطع في Google Drive. تأكد أن الأستاذ ربط حساب Google Drive ثم حاول مجدداً.",detail:String(error?.message||"")},500);
   }
-  return json({ok:true,id,message:"تم رفع المقطع بنجاح. لا يمكن للطالب حذفه، وسيظهر للأستاذ للمراجعة."},201);
+  return json({ok:true,id,message:"تم رفع المقطع إلى Google Drive بنجاح. لا يمكن للطالب حذفه، وسيظهر للأستاذ للمراجعة."},201);
 }
