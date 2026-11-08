@@ -43,6 +43,7 @@ export async function onRequestPost(context) {
   const auth = await requireUser(context);
   if (auth.response) return auth.response;
   if (auth.user.role !== "student") return json({error:"رفع المقاطع متاح لحساب الطالب فقط."},403);
+  await ensureTables(context.env.DB);
   const request = context.request;
   let titleHeader = request.headers.get("x-video-title") || "";
   try { titleHeader = decodeURIComponent(titleHeader); } catch {}
