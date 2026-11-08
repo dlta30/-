@@ -1,5 +1,6 @@
 (() => {
-  const MAX_BYTES = 100 * 1024 * 1024;
+  const MAX_BYTES = 500 * 1024 * 1024;
+  const CHUNK_BYTES = 8 * 1024 * 1024;
   const MAX_SECONDS = 300;
   const formatDuration = n => {
     const s = Math.max(0, Math.floor(Number(n)||0));
@@ -35,7 +36,7 @@
       const own=d.videos.filter(v=>v.isMine);
       const others=d.videos.filter(v=>!v.isMine);
       panel.innerHTML=(admin?'<article class="card" style="margin-bottom:15px"><div class="rowcard"><div><h2>إعدادات مقاطع الطلاب</h2><p>عند تفعيل الخيار، يستطيع الطلاب مشاهدة المقاطع التي أظهرها الأستاذ فقط.</p></div><button class="btn '+(d.studentsCanViewOthers?'primary':'ghost')+' small" id="toggleStudentVideoGallery">'+(d.studentsCanViewOthers?'إيقاف مشاهدة مقاطع الآخرين':'السماح للطلاب بمشاهدة مقاطع الآخرين')+'</button></div><div style="border-top:1px solid var(--line);margin-top:15px;padding-top:14px"><div id="studentVideoDriveStatus">جارٍ التحقق من ربط Google Drive...</div><button class="btn ghost small" id="connectStudentVideoDrive" style="margin-top:10px">ربط الحساب الأول</button><button class="btn ghost small" id="connectStudentVideoDrive2" style="margin-top:8px">ربط الحساب الثاني</button><p class="student-video-note">يُحفظ الفيديو في مساحة Google Drive الخاصة بالأستاذ (ضمن السعة المجانية المتاحة).</p></div></article>':'<article class="card" style="margin-bottom:15px"><h2>مقاطع طلاب</h2><p>ارفع مقطعك مباشرة من ألبوم الصور. بعد الرفع لا يمكنك حذفه. الحد الأقصى للمدة 5 دقائق.</p></article>')+
-      (!admin?'<form class="student-video-upload" id="studentVideoUpload"><h3>رفع مقطع جديد</h3><div class="field"><label>عنوان المقطع</label><input name="title" maxlength="120" required placeholder="مثال: تجربة تفاعل كيميائي"></div><div class="field"><label>اختر فيديو من الألبوم</label><input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" required></div><div class="student-video-note">الصيغ: MP4 أو WebM أو MOV · الحد الأقصى 5 دقائق و100 ميجابايت.</div><div class="student-video-progress"><span id="studentVideoProgress"></span></div><button class="btn primary" id="studentVideoSubmit">رفع المقطع</button></form>':'')+
+      (!admin?'<form class="student-video-upload" id="studentVideoUpload"><h3>رفع مقطع جديد</h3><div class="field"><label>عنوان المقطع</label><input name="title" maxlength="120" required placeholder="مثال: تجربة تفاعل كيميائي"></div><div class="field"><label>اختر فيديو من الألبوم</label><input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" required></div><div class="student-video-note">الصيغ: MP4 أو WebM أو MOV · الحد الأقصى 5 دقائق و500 ميجابايت. الرفع يتم على أجزاء.</div><div class="student-video-progress"><span id="studentVideoProgress"></span></div><button class="btn primary" id="studentVideoSubmit">رفع المقطع</button></form>':'')+
       (admin?'<h2>جميع المقاطع ('+d.videos.length+')</h2>': '<h2>مقاطعك</h2>')+
       (own.length||admin?'<div class="student-video-grid">'+(admin?d.videos:own).map(v=>videoCard(v,admin)).join("")+'</div>':'<div class="empty">لم ترفع أي مقطع بعد.</div>')+
       (!admin&&d.studentsCanViewOthers?'<h2 style="margin-top:28px">مقاطع الطلاب المنشورة</h2>'+(others.length?'<div class="student-video-grid">'+others.map(v=>videoCard(v,false)).join("")+'</div>':'<div class="empty">لا توجد مقاطع منشورة للطلاب الآخرين حالياً.</div>'):'');
@@ -59,7 +60,7 @@
           e.preventDefault();
           const title=form.elements.title.value.trim(),file=form.elements.video.files?.[0];
           if(!title||!file){toast("اكتب عنوان المقطع واختر الفيديو");return;}
-          if(file.size>MAX_BYTES){toast("حجم الفيديو أكبر من 100 ميجابايت");return;}
+          if(file.size>MAX_BYTES){toast("حجم الفيديو أكبر من 500 ميجابايت");return;}
           if(!/^video\/(mp4|webm|quicktime)$/.test(file.type)){toast("اختر فيديو MP4 أو WebM أو MOV");return;}
           const btn=form.querySelector("button");btn.disabled=true;btn.textContent="جارٍ فحص الفيديو...";
           const objectUrl=URL.createObjectURL(file),probe=document.createElement("video");
@@ -69,19 +70,39 @@
             if(!Number.isFinite(duration)||duration<=0||duration>MAX_SECONDS){btn.disabled=false;btn.textContent="رفع المقطع";toast("مدة الفيديو يجب ألا تتجاوز 5 دقائق");return;}
             btn.textContent="جارٍ رفع الفيديو...";
             try{
-              const result=await new Promise((resolve,reject)=>{
-                const xhr=new XMLHttpRequest();
-                xhr.open("POST","/api/student-videos");
-                xhr.withCredentials=true;
-                xhr.setRequestHeader("content-type",file.type);
-                xhr.setRequestHeader("x-video-title",encodeURIComponent(title));
-                xhr.setRequestHeader("x-video-duration",String(duration));
-                xhr.upload.onprogress=event=>{if(event.lengthComputable){const bar=panel.querySelector("#studentVideoProgress");if(bar)bar.style.width=Math.round(event.loaded/event.total*100)+"%";}};
-                xhr.onload=()=>{let data={};try{data=JSON.parse(xhr.responseText||"{}");}catch{}if(xhr.status>=200&&xhr.status<300)resolve(data);else reject(Error(data.error||"تعذر رفع الفيديو"));};
-                xhr.onerror=()=>reject(Error("انقطع الاتصال أثناء رفع الفيديو."));
-                xhr.send(file);
-              });
-              toast(result.message||"تم رفع المقطع. لا يمكنك حذفه.");
+              const session=await api("/api/student-videos/upload-session",{method:"POST",body:JSON.stringify({title,contentType:file.type,size:file.size,duration})});
+              let offset=0,done=false;
+              while(offset<file.size&&!done){
+                const end=Math.min(offset+CHUNK_BYTES,file.size);
+                const result=await new Promise((resolve,reject)=>{
+                  const xhr=new XMLHttpRequest();
+                  xhr.open("POST","/api/student-videos/upload-chunk");
+                  xhr.withCredentials=true;
+                  xhr.setRequestHeader("content-type","application/octet-stream");
+                  xhr.setRequestHeader("x-upload-id",session.uploadId);
+                  xhr.setRequestHeader("x-chunk-start",String(offset));
+                  xhr.setRequestHeader("x-chunk-end",String(end-1));
+                  xhr.setRequestHeader("x-upload-total",String(file.size));
+                  xhr.upload.onprogress=event=>{
+                    if(event.lengthComputable){
+                      const bar=panel.querySelector("#studentVideoProgress");
+                      if(bar)bar.style.width=Math.round((offset+event.loaded)/file.size*100)+"%";
+                    }
+                  };
+                  xhr.onload=()=>{let data={};try{data=JSON.parse(xhr.responseText||"{}");}catch{}if(xhr.status>=200&&xhr.status<300)resolve(data);else reject(Error(data.error||"تعذر رفع جزء الفيديو"));};
+                  xhr.onerror=()=>reject(Error("انقطع الاتصال أثناء رفع الفيديو."));
+                  xhr.send(file.slice(offset,end));
+                });
+                done=!!result.done;
+                const next=done?file.size:Number(result.nextOffset??end);
+                if(!done&&next<=offset)throw Error("لم يتأكد الخادم من تقدم الرفع. حاول مرة أخرى.");
+                offset=next;
+                const bar=panel.querySelector("#studentVideoProgress");
+                if(bar)bar.style.width=Math.round(offset/file.size*100)+"%";
+                btn.textContent="جارٍ الرفع "+Math.round(offset/file.size*100)+"٪";
+              }
+              if(!done)throw Error("لم يكتمل حفظ الفيديو.");
+              toast("تم رفع المقطع وحفظه بنجاح.");
               await loadVideos(false,panel);
             }catch(err){toast(err.message);btn.disabled=false;btn.textContent="رفع المقطع";}
           };
