@@ -58,10 +58,19 @@
             if(!Number.isFinite(duration)||duration<=0||duration>MAX_SECONDS){btn.disabled=false;btn.textContent="رفع المقطع";toast("مدة الفيديو يجب ألا تتجاوز 5 دقائق");return;}
             btn.textContent="جارٍ رفع الفيديو...";
             try{
-              const response=await fetch("/api/student-videos",{method:"POST",credentials:"same-origin",headers:{"content-type":file.type,"x-video-title":encodeURIComponent(title),"x-video-duration":String(duration)},body:file});
-              const result=await response.json().catch(()=>({}));
-              if(!response.ok)throw Error(result.error||"تعذر رفع الفيديو");
-              toast("تم رفع المقطع. لا يمكنك حذفه.");
+              const result=await new Promise((resolve,reject)=>{
+                const xhr=new XMLHttpRequest();
+                xhr.open("POST","/api/student-videos");
+                xhr.withCredentials=true;
+                xhr.setRequestHeader("content-type",file.type);
+                xhr.setRequestHeader("x-video-title",encodeURIComponent(title));
+                xhr.setRequestHeader("x-video-duration",String(duration));
+                xhr.upload.onprogress=event=>{if(event.lengthComputable){const bar=panel.querySelector("#studentVideoProgress");if(bar)bar.style.width=Math.round(event.loaded/event.total*100)+"%";}};
+                xhr.onload=()=>{let data={};try{data=JSON.parse(xhr.responseText||"{}");}catch{}if(xhr.status>=200&&xhr.status<300)resolve(data);else reject(Error(data.error||"تعذر رفع الفيديو"));};
+                xhr.onerror=()=>reject(Error("انقطع الاتصال أثناء رفع الفيديو."));
+                xhr.send(file);
+              });
+              toast(result.message||"تم رفع المقطع. لا يمكنك حذفه.");
               await loadVideos(false,panel);
             }catch(err){toast(err.message);btn.disabled=false;btn.textContent="رفع المقطع";}
           };
