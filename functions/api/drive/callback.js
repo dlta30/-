@@ -1,5 +1,5 @@
-import { requireAdmin } from "../../../_lib/auth.js";
-import { ensureDriveTable, encryptRefreshToken } from "../../../_lib/google-drive.js";
+import { requireAdmin } from "../../_lib/auth.js";
+import { ensureDriveTable, encryptRefreshToken } from "../../_lib/google-drive.js";
 
 function cookie(request,name){
   const item=(request.headers.get("Cookie")||"").split(";").map(x=>x.trim()).find(x=>x.startsWith(name+"="));
