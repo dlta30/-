@@ -9,6 +9,7 @@ function redirect(request,key){
   const url=new URL("/",request.url);url.searchParams.set(key,"1");
   const headers=new Headers({location:url.toString()});
   headers.append("set-cookie","drive_oauth_state=; Path=/api/drive; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
+  headers.append("set-cookie","drive_oauth_slot=; Path=/api/drive; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
   return new Response(null,{status:302,headers});
 }
 export async function onRequestGet(context){
@@ -16,6 +17,7 @@ export async function onRequestGet(context){
   if(auth.response) return auth.response;
   const {request,env}=context,url=new URL(request.url);
   const state=url.searchParams.get("state");
+  const slot=cookie(request,"drive_oauth_slot")==="2"?2:1;
   if(!state || state!==cookie(request,"drive_oauth_state")) return redirect(request,"drive_error");
   if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET) return redirect(request,"drive_error");
   const redirectUri=new URL("/api/drive/callback",request.url).toString();
@@ -42,7 +44,8 @@ export async function onRequestGet(context){
   }
   await ensureDriveTable(env.DB);
   const encrypted=await encryptRefreshToken(env,tokens.refresh_token);
-  await env.DB.prepare("INSERT INTO google_drive_config (id,refresh_token_cipher,refresh_token_iv,connected_email,folder_id,updated_at) VALUES (1,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET refresh_token_cipher=excluded.refresh_token_cipher,refresh_token_iv=excluded.refresh_token_iv,connected_email=excluded.connected_email,folder_id=excluded.folder_id,updated_at=datetime('now')")
+  const targetTable=slot===2?"google_drive_account_two":"google_drive_config";
+  await env.DB.prepare("INSERT INTO "+targetTable+ (id,refresh_token_cipher,refresh_token_iv,connected_email,folder_id,updated_at) VALUES (1,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET refresh_token_cipher=excluded.refresh_token_cipher,refresh_token_iv=excluded.refresh_token_iv,connected_email=excluded.connected_email,folder_id=excluded.folder_id,updated_at=datetime('now')")
     .bind(encrypted.cipher,encrypted.iv,String(profile.email||"").slice(0,254),folderId).run();
   return redirect(request,"drive_connected");
 }
