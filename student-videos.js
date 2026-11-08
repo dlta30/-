@@ -58,7 +58,7 @@
             if(!Number.isFinite(duration)||duration<=0||duration>MAX_SECONDS){btn.disabled=false;btn.textContent="رفع المقطع";toast("مدة الفيديو يجب ألا تتجاوز 5 دقائق");return;}
             btn.textContent="جارٍ رفع الفيديو...";
             try{
-              const response=await fetch("/api/student-videos",{method:"POST",credentials:"same-origin",headers:{"content-type":file.type,"content-length":String(file.size),"x-video-title":encodeURIComponent(title),"x-video-duration":String(duration)},body:file});
+              const response=await fetch("/api/student-videos",{method:"POST",credentials:"same-origin",headers:{"content-type":file.type,"x-video-title":encodeURIComponent(title),"x-video-duration":String(duration)},body:file});
               const result=await response.json().catch(()=>({}));
               if(!response.ok)throw Error(result.error||"تعذر رفع الفيديو");
               toast("تم رفع المقطع. لا يمكنك حذفه.");
